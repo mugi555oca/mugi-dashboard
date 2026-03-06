@@ -36,18 +36,21 @@ body {
     width: 200px;
     height: 200px;
     margin: 0 auto 30px;
-    background: linear-gradient(135deg, #4a00e0 0%, #8e2de2 100%);
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 10px 30px rgba(138, 43, 226, 0.3);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
     border: 4px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
 }
 
-.logo-text {
-    font-size: 80px;
-    opacity: 0.9;
+.logo-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 50%;
 }
 
 h1 {
