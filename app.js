@@ -47,6 +47,8 @@ function runSim() {
     let totalCMET = initialCMET;
     let reserveUSD = poolUSDT; // Start 100% backed in Value
     let capturedValue = 0;
+    let capturedPremium = 0;
+    let capturedDiscount = 0;
 
     const data = {
         labels: [],
@@ -97,7 +99,9 @@ function runSim() {
                 poolUSDT -= dUSDT;
                 totalCMET += dCMET;
                 reserveUSD += dUSDT; // Add to physical reserve
-                capturedValue += dUSDT - (dCMET * price); // True arbitrage profit
+                let profit = dUSDT - (dCMET * price);
+                capturedValue += profit; // True arbitrage profit
+                capturedPremium += profit;
             }
         } else if (poolPrice < price * (1 - eps)) {
             // Discount: Buy CMET from pool, burn it
@@ -111,7 +115,9 @@ function runSim() {
                     poolUSDT += dUSDT;
                     totalCMET -= dCMET;
                     reserveUSD -= dUSDT;
-                    capturedValue += (dCMET * price) - dUSDT;
+                    let profit = (dCMET * price) - dUSDT;
+                    capturedValue += profit;
+                    capturedDiscount += profit;
                 }
             }
         }
@@ -129,11 +135,11 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateDashboard(data, initialPrice, capturedValue, reserveUSD);
+    updateDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount);
     drawCharts(data);
 }
 
-function updateDashboard(data, initialPrice, capturedValue, reserveUSD) {
+function updateDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
 
@@ -141,8 +147,13 @@ function updateDashboard(data, initialPrice, capturedValue, reserveUSD) {
     document.getElementById('kpi-nav-sub').innerText = `Start: ${formatCurrency(initialPrice)}`;
     
     document.getElementById('kpi-res').innerText = `$${formatNumber(reserveUSD / 1000000)}M`;
+    document.getElementById('kpi-res-sub').innerText = `Start: $${formatNumber((initialCMET * initialPrice) / 1000000)}M`;
+    
     document.getElementById('kpi-supply').innerText = formatNumber(finalSupply);
+    document.getElementById('kpi-supply-sub').innerText = `Start: ${formatNumber(initialCMET)}`;
+    
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue);
+    document.getElementById('kpi-captured-sub').innerText = `Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
 }
 
 function drawCharts(data) {
