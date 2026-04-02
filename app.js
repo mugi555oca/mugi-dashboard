@@ -45,7 +45,8 @@ function runSim() {
     let poolCMET = initialCMET;
     let poolUSDT = initialCMET * initialPrice;
     let totalCMET = initialCMET;
-    let reserveUSD = poolUSDT; // Start 100% backed in Value
+    let reservePhysical = initialCMET; // Start 100% backed in physical material (1 CMET = 1 unit)
+    let reserveUSD = reservePhysical * initialPrice;
     let capturedValue = 0;
     let capturedPremium = 0;
     let capturedDiscount = 0;
@@ -98,7 +99,8 @@ function runSim() {
                 poolCMET += dCMET;
                 poolUSDT -= dUSDT;
                 totalCMET += dCMET;
-                reserveUSD += dUSDT; // Add to physical reserve
+                let boughtPhysical = dUSDT / price; // Buy physical material at spot price
+                reservePhysical += boughtPhysical; 
                 let profit = dUSDT - (dCMET * price);
                 capturedValue += profit; // True arbitrage profit
                 capturedPremium += profit;
@@ -114,7 +116,8 @@ function runSim() {
                     poolCMET -= dCMET;
                     poolUSDT += dUSDT;
                     totalCMET -= dCMET;
-                    reserveUSD -= dUSDT;
+                    let soldPhysical = dUSDT / price; // Sell physical material at spot price to get USDT
+                    reservePhysical -= soldPhysical;
                     let profit = (dCMET * price) - dUSDT;
                     capturedValue += profit;
                     capturedDiscount += profit;
@@ -124,6 +127,7 @@ function runSim() {
 
         // 4. Update state variables
         poolPrice = poolUSDT / poolCMET;
+        reserveUSD = reservePhysical * price; // Update reserve USD value based on current spot price
         let nav = reserveUSD / totalCMET;
 
         // 5. Store daily data
