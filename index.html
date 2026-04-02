@@ -3,48 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Mugi Cooporation Dashboard">
-    <title>Mugi Cooporation Dashboard</title>
+    <meta name="description" content="CMET Soft-Peg Simulator Dashboard">
+    <title>CMET Protocol Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-  <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#f0f2f5; display:flex; align-items:center; justify-content:center; z-index:9999;">
-        <div style="background:#fff; padding:30px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); text-align:center; max-width:400px; width:90%;">
-            <img src="MugiCooporationLogo.png" alt="Logo" style="max-width:150px; margin-bottom:20px;">
-            <h2 style="margin-top:0; font-family:sans-serif;">Geschützter Bereich</h2>
-            <input type="password" id="passInput" placeholder="Passwort eingeben" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
-            <button onclick="checkPass()" style="width:100%; padding:10px; background-color:#000; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Entsperren</button>
-            <p id="passError" style="color:red; display:none; margin-top:10px; font-family:sans-serif;">Falsches Passwort.</p>
+    <!-- Password Protection Overlay -->
+    <div id="login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#203A61; display:flex; align-items:center; justify-content:center; z-index:9999;">
+        <div style="background:#FFFBF5; padding:40px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; max-width:400px; width:90%;">
+            <img src="favicon.png" alt="CMET Logo" style="max-width:120px; margin-bottom:20px;">
+            <h2 style="margin-top:0; color:#203A61; font-weight:700;">CMET Simulation Access</h2>
+            <p style="color:#B5A8A0; margin-bottom:20px; font-size:14px;">Restricted Protocol Interface</p>
+            <input type="password" id="passInput" placeholder="Passwort eingeben" style="width:100%; padding:12px; margin-bottom:15px; border:1px solid #B5A8A0; border-radius:6px; box-sizing:border-box; font-family:'Montserrat', sans-serif;">
+            <button onclick="checkPass()" class="btn-primary" style="width:100%;">Entsperren</button>
+            <p id="passError" style="color:#D9534F; display:none; margin-top:15px; font-weight:600;">Zugriff verweigert.</p>
         </div>
     </div>
-    <div id="main-content" style="display:none;">
-    <div class="container">
-        <header class="logo-section">
-            <div class="logo-placeholder">
-                <img src="MugiCooporationLogo.png" alt="Mugi Cooporation Logo">
-            </div>
-            <h1>Mugi Cooporation Dashboard</h1>
-        </header>
 
-        <main>
-            <section class="welcome-section">
-                <h2>Willkommen im Mugi Cooporation Dashboard</h2>
-                <p>Erste Version – vorläufige Implementierung</p>
+    <!-- Main Dashboard -->
+    <div id="main-content" style="display:none;" class="dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="favicon.png" alt="Logo" class="sidebar-logo">
+                <h2>PAT Model Sim</h2>
+            </div>
+            
+            <div class="controls-section">
+                <h3>System Parameter</h3>
+                
+                <div class="control-group">
+                    <label>Simulationsdauer (Tage): <span id="val-days">365</span></label>
+                    <input type="range" id="input-days" min="30" max="1000" step="1" value="365">
+                </div>
+
+                <div class="control-group">
+                    <label>Start-Reserve (CMET):</label>
+                    <input type="number" id="input-cmet" value="10000" step="1000">
+                </div>
+
+                <div class="control-group">
+                    <label>Init. CM-Preis (USD/g):</label>
+                    <input type="number" id="input-price" value="950" step="10">
+                </div>
+
+                <div class="control-group">
+                    <label>Volatilität (Täglich): <span id="val-vol">2.0</span>%</label>
+                    <input type="range" id="input-vol" min="0" max="10" step="0.1" value="2.0">
+                </div>
+
+                <div class="control-group">
+                    <label>Markt-Trend (Drift): <span id="val-drift">0.05</span>%</label>
+                    <input type="range" id="input-drift" min="-2" max="2" step="0.01" value="0.05">
+                </div>
+
+                <div class="control-group">
+                    <label>Intervention Band (ε): <span id="val-eps">0.5</span>%</label>
+                    <input type="range" id="input-eps" min="0.1" max="5.0" step="0.1" value="0.5">
+                </div>
+                
+                <div class="control-group">
+                    <label>Tägl. Handelsvol. (USD):</label>
+                    <input type="number" id="input-vol-usd" value="50000" step="5000">
+                </div>
+
+                <button id="btn-run" class="btn-primary" style="margin-top:15px;">Simulation Starten</button>
+            </div>
+        </aside>
+
+        <main class="dashboard-content">
+            <header class="top-nav">
+                <h1>Material Money Network — Treasury Flywheel</h1>
+                <div class="nav-metrics">
+                    <span class="status-indicator"></span> System Live
+                </div>
+            </header>
+
+            <section class="kpi-grid">
+                <div class="kpi-card">
+                    <h4>End-NAV (pro Token)</h4>
+                    <div class="kpi-val" id="kpi-nav">$0.00</div>
+                    <div class="kpi-sub" id="kpi-nav-sub">Start: $0.00</div>
+                </div>
+                <div class="kpi-card">
+                    <h4>Total Reserve Value</h4>
+                    <div class="kpi-val" id="kpi-res">$0M</div>
+                    <div class="kpi-sub" id="kpi-res-sub">In USD</div>
+                </div>
+                <div class="kpi-card">
+                    <h4>CMET im Umlauf</h4>
+                    <div class="kpi-val" id="kpi-supply">0</div>
+                    <div class="kpi-sub">Tokens</div>
+                </div>
+                <div class="kpi-card accent-card">
+                    <h4>Flywheel Value Captured</h4>
+                    <div class="kpi-val" id="kpi-captured">$0</div>
+                    <div class="kpi-sub">Arbitrage Profit</div>
+                </div>
+            </section>
+
+            <section class="charts-grid">
+                <div class="chart-container span-2">
+                    <h3>Preis vs. NAV Entwicklung</h3>
+                    <canvas id="chartPriceNav"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Premium / Discount Spread</h3>
+                    <canvas id="chartSpread"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>CMET Supply Dynamik (Mint/Burn)</h3>
+                    <canvas id="chartSupply"></canvas>
+                </div>
             </section>
         </main>
+    </div>
 
-        <footer>
-            <p>&copy; 2026 Mugi Cooporation. Alle Rechte vorbehalten.</p>
-        </footer>
-    </div>
-    </div>
+    <script src="app.js"></script>
     <script>
+        // Password logic
         function checkPass() {
             var input = document.getElementById('passInput').value;
             if(input === 'Praseodyn888$$') {
                 document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
+                document.getElementById('main-content').style.display = 'flex';
+                // Trigger initial chart render
+                if(window.runSim) window.runSim();
             } else {
                 document.getElementById('passError').style.display = 'block';
             }
