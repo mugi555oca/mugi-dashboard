@@ -11,7 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- Password Protection Overlay -->
     <div id="login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#203A61; display:flex; align-items:center; justify-content:center; z-index:9999;">
         <div style="background:#FFFBF5; padding:40px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.5); text-align:center; max-width:400px; width:90%;">
             <img src="favicon.png" alt="CMET Logo" style="max-width:120px; margin-bottom:20px;">
@@ -23,114 +22,182 @@
         </div>
     </div>
 
-    <!-- Main Dashboard -->
     <div id="main-content" style="display:none;" class="dashboard-wrapper">
         <aside class="sidebar">
             <div class="sidebar-header">
                 <img src="favicon.png" alt="Logo" class="sidebar-logo">
-                <h2>PAT Model Sim</h2>
+                <h2>CMET Interface</h2>
             </div>
-            
-            <div class="controls-section">
+
+            <div class="controls-section" id="sim-controls">
                 <h3>System Parameter</h3>
-                
                 <div class="control-group">
                     <label>Simulationsdauer (Tage): <span id="val-days">365</span></label>
                     <input type="range" id="input-days" min="30" max="1000" step="1" value="365">
                 </div>
-
                 <div class="control-group">
                     <label>Start-Reserve (CMET):</label>
                     <input type="number" id="input-cmet" value="10000" step="1000">
                 </div>
-
                 <div class="control-group">
                     <label>Init. CM-Preis (USD/g):</label>
                     <input type="number" id="input-price" value="950" step="10">
                 </div>
-
                 <div class="control-group">
                     <label>Volatilität (Täglich): <span id="val-vol">2.0</span>%</label>
                     <input type="range" id="input-vol" min="0" max="10" step="0.1" value="2.0">
                 </div>
-
                 <div class="control-group">
                     <label>Markt-Trend (Drift): <span id="val-drift">0.05</span>%</label>
                     <input type="range" id="input-drift" min="-2" max="2" step="0.01" value="0.05">
                 </div>
-
                 <div class="control-group">
                     <label>Intervention Band (ε): <span id="val-eps">0.5</span>%</label>
                     <input type="range" id="input-eps" min="0.1" max="5.0" step="0.1" value="0.5">
                 </div>
-                
                 <div class="control-group">
                     <label>Tägl. Handelsvol. (USD):</label>
                     <input type="number" id="input-vol-usd" value="50000" step="5000">
                 </div>
-
                 <button id="btn-run" class="btn-primary" style="margin-top:15px;">Simulation Starten</button>
+            </div>
+
+            <div class="controls-section hidden" id="history-controls">
+                <h3>Historischer Backtest</h3>
+                <div class="info-card">
+                    <div class="info-label">Zeitraum</div>
+                    <div class="info-value" id="history-range">2015-11 bis 2025-10</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Reserve-Startwert</div>
+                    <div class="info-value" id="history-start-value">–</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Top-Preislinien</div>
+                    <div class="info-value">Copper, Lithium, Cobalt, Neodymium, Thorium</div>
+                </div>
+                <div class="info-card small-text">
+                    Historischer Replay eines fixen CMR-Mix. Fokus: NAV, Reservewert, Mint/Burn und Fees.
+                </div>
             </div>
         </aside>
 
         <main class="dashboard-content">
-            <header class="top-nav">
-                <h1>Material Money Network — Treasury Flywheel</h1>
-                <div class="nav-metrics">
-                    <span class="status-indicator"></span> System Live
+            <header class="top-nav top-nav-stack">
+                <div>
+                    <h1 id="page-title">Material Money Network — Treasury Flywheel</h1>
+                    <div class="page-subtitle" id="page-subtitle">Interaktive Soft-Peg-/PAT-Mechanik</div>
+                </div>
+                <div class="nav-right">
+                    <div class="tab-switcher">
+                        <button class="tab-btn active" data-tab="sim">Tab 1 · Simulator</button>
+                        <button class="tab-btn" data-tab="history">Tab 2 · Historischer Backtest</button>
+                    </div>
+                    <div class="nav-metrics">
+                        <span class="status-indicator"></span> System Live
+                    </div>
                 </div>
             </header>
 
-            <section class="kpi-grid">
-                <div class="kpi-card">
-                    <h4>End-NAV (pro Token)</h4>
-                    <div class="kpi-val" id="kpi-nav">$0.00</div>
-                    <div class="kpi-sub" id="kpi-nav-sub">Start: $0.00</div>
-                </div>
-                <div class="kpi-card">
-                    <h4>Total Reserve Value</h4>
-                    <div class="kpi-val" id="kpi-res">$0M</div>
-                    <div class="kpi-sub" id="kpi-res-sub">In USD</div>
-                </div>
-                <div class="kpi-card">
-                    <h4>CMET im Umlauf</h4>
-                    <div class="kpi-val" id="kpi-supply">0</div>
-                    <div class="kpi-sub" id="kpi-supply-sub">Tokens</div>
-                </div>
-                <div class="kpi-card accent-card">
-                    <h4>Flywheel Value Captured</h4>
-                    <div class="kpi-val" id="kpi-captured">$0</div>
-                    <div class="kpi-sub" id="kpi-captured-sub" style="font-size:0.75rem;">Arbitrage Profit</div>
-                </div>
+            <section id="tab-sim" class="tab-panel active">
+                <section class="kpi-grid">
+                    <div class="kpi-card">
+                        <h4>End-NAV (pro Token)</h4>
+                        <div class="kpi-val" id="kpi-nav">$0.00</div>
+                        <div class="kpi-sub" id="kpi-nav-sub">Start: $0.00</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h4>Total Reserve Value</h4>
+                        <div class="kpi-val" id="kpi-res">$0M</div>
+                        <div class="kpi-sub" id="kpi-res-sub">In USD</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h4>CMET im Umlauf</h4>
+                        <div class="kpi-val" id="kpi-supply">0</div>
+                        <div class="kpi-sub" id="kpi-supply-sub">Tokens</div>
+                    </div>
+                    <div class="kpi-card accent-card">
+                        <h4>Flywheel Value Captured</h4>
+                        <div class="kpi-val" id="kpi-captured">$0</div>
+                        <div class="kpi-sub" id="kpi-captured-sub" style="font-size:0.75rem;">Arbitrage Profit</div>
+                    </div>
+                </section>
+
+                <section class="charts-grid">
+                    <div class="chart-container span-2">
+                        <h3>Preis vs. NAV Entwicklung</h3>
+                        <canvas id="chartPriceNav"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Premium / Discount Spread</h3>
+                        <canvas id="chartSpread"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>CMET Supply Dynamik (Mint/Burn)</h3>
+                        <canvas id="chartSupply"></canvas>
+                    </div>
+                </section>
             </section>
 
-            <section class="charts-grid">
-                <div class="chart-container span-2">
-                    <h3>Preis vs. NAV Entwicklung</h3>
-                    <canvas id="chartPriceNav"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h3>Premium / Discount Spread</h3>
-                    <canvas id="chartSpread"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h3>CMET Supply Dynamik (Mint/Burn)</h3>
-                    <canvas id="chartSupply"></canvas>
-                </div>
+            <section id="tab-history" class="tab-panel">
+                <section class="kpi-grid">
+                    <div class="kpi-card">
+                        <h4>End-NAV</h4>
+                        <div class="kpi-val" id="hist-nav">–</div>
+                        <div class="kpi-sub" id="hist-nav-sub">Start: –</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h4>Reserve Value</h4>
+                        <div class="kpi-val" id="hist-reserve">–</div>
+                        <div class="kpi-sub" id="hist-reserve-sub">Start: –</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h4>CMET Supply</h4>
+                        <div class="kpi-val" id="hist-supply">–</div>
+                        <div class="kpi-sub" id="hist-supply-sub">Netto-Veränderung</div>
+                    </div>
+                    <div class="kpi-card accent-card">
+                        <h4>Kumulierte Fees</h4>
+                        <div class="kpi-val" id="hist-fees">–</div>
+                        <div class="kpi-sub" id="hist-fees-sub">Mint/Burn Value Capture</div>
+                    </div>
+                </section>
+
+                <section class="charts-grid">
+                    <div class="chart-container span-2">
+                        <h3>Historische PAT-Performance: NAV vs. Reservewert</h3>
+                        <canvas id="chartHistoryNav"></canvas>
+                    </div>
+                    <div class="chart-container span-2">
+                        <h3>Historische Materialpreise (Top 5 nach Gewicht)</h3>
+                        <canvas id="chartHistoryPrices"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Mint / Burn / Fees</h3>
+                        <canvas id="chartHistoryFlows"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Fixer CMR-Mix</h3>
+                        <canvas id="chartHistoryMix"></canvas>
+                    </div>
+                </section>
+
+                <section class="chart-container" style="margin-top:20px;">
+                    <h3>Materialmix</h3>
+                    <div id="mix-list" class="mix-list"></div>
+                </section>
             </section>
         </main>
     </div>
 
     <script src="app.js"></script>
     <script>
-        // Password logic
         function checkPass() {
             var input = document.getElementById('passInput').value;
             if(input === 'Praseodyn888$$') {
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('main-content').style.display = 'flex';
-                // Trigger initial chart render
-                if(window.runSim) window.runSim();
+                if(window.initDashboard) window.initDashboard();
             } else {
                 document.getElementById('passError').style.display = 'block';
             }

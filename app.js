@@ -1,37 +1,76 @@
-// Global Chart instances
 let chartPriceNav, chartSpread, chartSupply;
+let chartHistoryNav, chartHistoryPrices, chartHistoryFlows, chartHistoryMix;
+let currentTab = 'sim';
 
-// Colors matching PDF presentation
 const colors = {
     primary: '#203A61',
     copper1: '#C58C6D',
     copper2: '#E6B89C',
     blue: '#3B74B8',
-    taupe: '#B5A8A0'
+    taupe: '#B5A8A0',
+    green: '#4CAF50',
+    red: '#D9534F'
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Attach event listeners to sliders
-    const ids = ['days', 'vol', 'drift', 'eps'];
-    ids.forEach(id => {
-        document.getElementById(`input-${id}`).addEventListener('input', (e) => {
-            document.getElementById(`val-${id}`).innerText = e.target.value;
-        });
-    });
-
-    document.getElementById('btn-run').addEventListener('click', runSim);
-});
+const historyState = {
+    summary: [],
+    prices: [],
+    mix: []
+};
 
 function formatNumber(num) {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
 }
 
 function formatCurrency(num) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(num || 0);
+}
+
+function formatMillions(num) {
+    return `$${formatNumber((num || 0) / 1000000)}M`;
+}
+
+function initDashboard() {
+    Chart.defaults.font.family = "'Montserrat', sans-serif";
+    Chart.defaults.color = colors.taupe;
+
+    const ids = ['days', 'vol', 'drift', 'eps'];
+    ids.forEach(id => {
+        const el = document.getElementById(`input-${id}`);
+        if (el) {
+            el.addEventListener('input', (e) => {
+                document.getElementById(`val-${id}`).innerText = e.target.value;
+            });
+        }
+    });
+
+    document.getElementById('btn-run')?.addEventListener('click', runSim);
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    runSim();
+    loadHistoryData();
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === `tab-${tab}`));
+    document.getElementById('sim-controls').classList.toggle('hidden', tab !== 'sim');
+    document.getElementById('history-controls').classList.toggle('hidden', tab !== 'history');
+
+    if (tab === 'sim') {
+        document.getElementById('page-title').innerText = 'Material Money Network — Treasury Flywheel';
+        document.getElementById('page-subtitle').innerText = 'Interaktive Soft-Peg-/PAT-Mechanik';
+    } else {
+        document.getElementById('page-title').innerText = 'CMET Historical PAT Backtest';
+        document.getElementById('page-subtitle').innerText = 'Historische Performance eines fixen CMR-Mix';
+        if (historyState.summary.length) renderHistory();
+    }
 }
 
 function runSim() {
-    // Read parameters
     const days = parseInt(document.getElementById('input-days').value);
     const initialCMET = parseFloat(document.getElementById('input-cmet').value);
     const initialPrice = parseFloat(document.getElementById('input-price').value);
@@ -40,45 +79,33 @@ function runSim() {
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const dailyVolUSD = parseFloat(document.getElementById('input-vol-usd').value);
 
-    // Initialization
     let price = initialPrice;
     let poolCMET = initialCMET;
     let poolUSDT = initialCMET * initialPrice;
     let totalCMET = initialCMET;
-    let reservePhysical = initialCMET; // Start 100% backed in physical material (1 CMET = 1 unit)
+    let reservePhysical = initialCMET;
     let reserveUSD = reservePhysical * initialPrice;
     let capturedValue = 0;
     let capturedPremium = 0;
     let capturedDiscount = 0;
 
-    const data = {
-        labels: [],
-        spotPrice: [],
-        nav: [],
-        poolPrice: [],
-        spread: [],
-        supply: []
-    };
+    const data = { labels: [], spotPrice: [], nav: [], poolPrice: [], spread: [], supply: [] };
 
     for (let t = 0; t <= days; t++) {
-        // 1. Geometric Brownian Motion for Spot Price (starting Day 1)
         if (t > 0) {
-            // Approx normal distribution
             let z = (Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() - 3) / 1.5;
             price = price * (1 + drift + vol * z);
         }
 
-        // 2. Market Trading (Noise)
-        // Add random external volume pushing the pool
-        let tradeDir = (Math.random() - 0.5) * 2; // -1 to 1
+        let tradeDir = (Math.random() - 0.5) * 2;
         let tradeUSD = tradeDir * dailyVolUSD;
         let k = poolCMET * poolUSDT;
 
-        if (tradeUSD > 0) { // Buy CMET (add USDT to pool)
+        if (tradeUSD > 0) {
             let newUSDT = poolUSDT + tradeUSD;
             poolCMET = k / newUSDT;
             poolUSDT = newUSDT;
-        } else if (tradeUSD < 0) { // Sell CMET (remove USDT from pool)
+        } else if (tradeUSD < 0) {
             let newUSDT = poolUSDT + tradeUSD;
             if (newUSDT > 0) {
                 poolCMET = k / newUSDT;
@@ -88,35 +115,32 @@ function runSim() {
 
         let poolPrice = poolUSDT / poolCMET;
 
-        // 3. Treasury Intervention (StockUp & Redeem)
         if (poolPrice > price * (1 + eps)) {
-            // Premium: Mint CMET, sell into pool to drive price down
             let targetPrice = price * (1 + eps / 2);
             let targetCMET = Math.sqrt(k / targetPrice);
-            let dCMET = targetCMET - poolCMET; // CMET to mint
+            let dCMET = targetCMET - poolCMET;
             if (dCMET > 0) {
-                let dUSDT = poolUSDT - (k / targetCMET); // USDT received
+                let dUSDT = poolUSDT - (k / targetCMET);
                 poolCMET += dCMET;
                 poolUSDT -= dUSDT;
                 totalCMET += dCMET;
-                let boughtPhysical = dUSDT / price; // Buy physical material at spot price
-                reservePhysical += boughtPhysical; 
+                let boughtPhysical = dUSDT / price;
+                reservePhysical += boughtPhysical;
                 let profit = dUSDT - (dCMET * price);
-                capturedValue += profit; // True arbitrage profit
+                capturedValue += profit;
                 capturedPremium += profit;
             }
         } else if (poolPrice < price * (1 - eps)) {
-            // Discount: Buy CMET from pool, burn it
             let targetPrice = price * (1 - eps / 2);
             let targetCMET = Math.sqrt(k / targetPrice);
-            let dCMET = poolCMET - targetCMET; // CMET to buy from pool
+            let dCMET = poolCMET - targetCMET;
             if (dCMET > 0) {
-                let dUSDT = (k / targetCMET) - poolUSDT; // USDT needed
+                let dUSDT = (k / targetCMET) - poolUSDT;
                 if (reserveUSD >= dUSDT) {
                     poolCMET -= dCMET;
                     poolUSDT += dUSDT;
                     totalCMET -= dCMET;
-                    let soldPhysical = dUSDT / price; // Sell physical material at spot price to get USDT
+                    let soldPhysical = dUSDT / price;
                     reservePhysical -= soldPhysical;
                     let profit = (dCMET * price) - dUSDT;
                     capturedValue += profit;
@@ -125,12 +149,10 @@ function runSim() {
             }
         }
 
-        // 4. Update state variables
         poolPrice = poolUSDT / poolCMET;
-        reserveUSD = reservePhysical * price; // Update reserve USD value based on current spot price
+        reserveUSD = reservePhysical * price;
         let nav = reserveUSD / totalCMET;
 
-        // 5. Store daily data
         data.labels.push(t);
         data.spotPrice.push(price);
         data.nav.push(nav);
@@ -139,71 +161,115 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount);
-    drawCharts(data);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount);
+    drawSimCharts(data);
 }
 
-function updateDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
 
     document.getElementById('kpi-nav').innerText = formatCurrency(finalNav);
     document.getElementById('kpi-nav-sub').innerText = `Start: ${formatCurrency(initialPrice)}`;
-    
     document.getElementById('kpi-res').innerText = `$${formatNumber(reserveUSD / 1000000)}M`;
     document.getElementById('kpi-res-sub').innerText = `Start: $${formatNumber((initialCMET * initialPrice) / 1000000)}M`;
-    
     document.getElementById('kpi-supply').innerText = formatNumber(finalSupply);
     document.getElementById('kpi-supply-sub').innerText = `Start: ${formatNumber(initialCMET)}`;
-    
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue);
     document.getElementById('kpi-captured-sub').innerText = `Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
 }
 
-function drawCharts(data) {
-    // Destroy existing charts to prevent overlap
+function drawSimCharts(data) {
     if (chartPriceNav) chartPriceNav.destroy();
     if (chartSpread) chartSpread.destroy();
     if (chartSupply) chartSupply.destroy();
 
-    // Common Chart.js options for styling
-    Chart.defaults.font.family = "'Montserrat', sans-serif";
-    Chart.defaults.color = colors.taupe;
-
-    // 1. Price vs NAV Chart
-    const ctx1 = document.getElementById('chartPriceNav').getContext('2d');
-    chartPriceNav = new Chart(ctx1, {
+    chartPriceNav = new Chart(document.getElementById('chartPriceNav').getContext('2d'), {
         type: 'line',
         data: {
             labels: data.labels,
             datasets: [
-                {
-                    label: 'Valyrium Spot Price',
-                    data: data.spotPrice,
-                    borderColor: colors.taupe,
-                    borderDash: [5, 5],
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.1
-                },
-                {
-                    label: 'Net Asset Value (NAV)',
-                    data: data.nav,
-                    borderColor: colors.copper1,
-                    backgroundColor: 'rgba(197, 140, 109, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    pointRadius: 0,
-                    tension: 0.1
-                },
-                {
-                    label: 'CMET Pool Price',
-                    data: data.poolPrice,
-                    borderColor: colors.primary,
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.1
-                }
+                { label: 'Valyrium Spot Price', data: data.spotPrice, borderColor: colors.taupe, borderDash: [5, 5], borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                { label: 'Net Asset Value (NAV)', data: data.nav, borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.1)', borderWidth: 3, fill: true, pointRadius: 0, tension: 0.1 },
+                { label: 'CMET Pool Price', data: data.poolPrice, borderColor: colors.primary, borderWidth: 2, pointRadius: 0, tension: 0.1 }
+            ]
+        },
+        options: baseLineOptions()
+    });
+
+    chartSpread = new Chart(document.getElementById('chartSpread').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [{ label: 'Premium / Discount (%)', data: data.spread, backgroundColor: data.spread.map(v => v > 0 ? colors.copper2 : colors.blue), borderWidth: 0 }]
+        },
+        options: baseBarOptions(false)
+    });
+
+    chartSupply = new Chart(document.getElementById('chartSupply').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{ label: 'Total CMET Supply', data: data.supply, borderColor: colors.primary, backgroundColor: 'rgba(32, 58, 97, 0.1)', borderWidth: 2, fill: true, pointRadius: 0, stepped: true }]
+        },
+        options: baseLineOptions(false)
+    });
+}
+
+async function loadHistoryData() {
+    const [summary, prices, mix] = await Promise.all([
+        fetch('data/summary.json').then(r => r.json()),
+        fetch('data/prices.json').then(r => r.json()),
+        fetch('data/mix.json').then(r => r.json())
+    ]);
+
+    historyState.summary = summary;
+    historyState.prices = prices;
+    historyState.mix = mix;
+
+    if (currentTab === 'history') renderHistory();
+}
+
+function renderHistory() {
+    const summary = historyState.summary;
+    const prices = historyState.prices;
+    const mix = [...historyState.mix].sort((a, b) => b.weight - a.weight);
+    if (!summary.length || !prices.length || !mix.length) return;
+
+    const start = summary[0];
+    const end = summary[summary.length - 1];
+    const totalFees = summary.reduce((sum, row) => sum + (row.feeValue || 0), 0);
+    const totalMinted = summary.reduce((sum, row) => sum + (row.minted || 0), 0);
+    const totalBurned = summary.reduce((sum, row) => sum + (row.burned || 0), 0);
+    const netSupplyDelta = (end.supplyPost || 0) - (start.supplyPost || 0);
+
+    document.getElementById('hist-nav').innerText = formatCurrency(end.navPre);
+    document.getElementById('hist-nav-sub').innerText = `Start: ${formatCurrency(start.navPre)}`;
+    document.getElementById('hist-reserve').innerText = formatMillions(end.reserveValuePre);
+    document.getElementById('hist-reserve-sub').innerText = `Start: ${formatMillions(start.reserveValuePre)}`;
+    document.getElementById('hist-supply').innerText = formatNumber(end.supplyPost);
+    document.getElementById('hist-supply-sub').innerText = `Netto: ${netSupplyDelta >= 0 ? '+' : ''}${formatNumber(netSupplyDelta)}`;
+    document.getElementById('hist-fees').innerText = formatCurrency(totalFees);
+    document.getElementById('hist-fees-sub').innerText = `Minted: ${formatNumber(totalMinted)} | Burned: ${formatNumber(totalBurned)}`;
+    document.getElementById('history-range').innerText = `${start.date.slice(0, 7)} bis ${end.date.slice(0, 7)}`;
+    document.getElementById('history-start-value').innerText = formatMillions(start.reserveValuePre);
+
+    renderMixList(mix);
+    drawHistoryNav(summary);
+    drawHistoryPrices(prices, mix.slice(0, 5).map(item => item.material));
+    drawHistoryFlows(summary);
+    drawHistoryMix(mix);
+}
+
+function drawHistoryNav(summary) {
+    if (chartHistoryNav) chartHistoryNav.destroy();
+    chartHistoryNav = new Chart(document.getElementById('chartHistoryNav').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: summary.map(row => row.date),
+            datasets: [
+                { label: 'NAV', data: summary.map(row => row.navPre), borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.12)', fill: false, borderWidth: 3, pointRadius: 0, tension: 0.2, yAxisID: 'y' },
+                { label: 'Reserve Value', data: summary.map(row => row.reserveValuePre), borderColor: colors.primary, backgroundColor: 'rgba(32, 58, 97, 0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: 'y1' }
             ]
         },
         options: {
@@ -212,61 +278,117 @@ function drawCharts(data) {
             interaction: { mode: 'index', intersect: false },
             plugins: { legend: { position: 'top' } },
             scales: {
-                y: { grid: { color: 'rgba(0,0,0,0.05)' } },
+                y: { position: 'left', grid: { color: 'rgba(0,0,0,0.05)' } },
+                y1: { position: 'right', grid: { drawOnChartArea: false } },
                 x: { grid: { display: false } }
             }
         }
     });
+}
 
-    // 2. Spread (Premium/Discount) Chart
-    const ctx2 = document.getElementById('chartSpread').getContext('2d');
-    chartSpread = new Chart(ctx2, {
+function drawHistoryPrices(prices, topMaterials) {
+    if (chartHistoryPrices) chartHistoryPrices.destroy();
+    const palette = [colors.primary, colors.copper1, colors.blue, '#7F56D9', '#16A34A'];
+    chartHistoryPrices = new Chart(document.getElementById('chartHistoryPrices').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: prices.map(row => row.date),
+            datasets: topMaterials.map((material, idx) => ({
+                label: material,
+                data: prices.map(row => row[material]),
+                borderColor: palette[idx],
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.2
+            }))
+        },
+        options: baseLineOptions()
+    });
+}
+
+function drawHistoryFlows(summary) {
+    if (chartHistoryFlows) chartHistoryFlows.destroy();
+    chartHistoryFlows = new Chart(document.getElementById('chartHistoryFlows').getContext('2d'), {
         type: 'bar',
         data: {
-            labels: data.labels,
+            labels: summary.map(row => row.date),
+            datasets: [
+                { label: 'Minted', data: summary.map(row => row.minted), backgroundColor: colors.green, stack: 'flow' },
+                { label: 'Burned', data: summary.map(row => row.burned), backgroundColor: colors.red, stack: 'flow' },
+                { label: 'Fees (USD)', data: summary.map(row => row.feeValue), type: 'line', borderColor: colors.copper1, backgroundColor: colors.copper1, yAxisID: 'y1', pointRadius: 0, tension: 0.2 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                y: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                y1: { position: 'right', grid: { drawOnChartArea: false } },
+                x: { stacked: true, grid: { display: false } }
+            }
+        }
+    });
+}
+
+function drawHistoryMix(mix) {
+    if (chartHistoryMix) chartHistoryMix.destroy();
+    chartHistoryMix = new Chart(document.getElementById('chartHistoryMix').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: mix.map(item => item.material),
             datasets: [{
-                label: 'Premium / Discount (%)',
-                data: data.spread,
-                backgroundColor: data.spread.map(v => v > 0 ? colors.copper2 : colors.blue),
+                data: mix.map(item => item.weight * 100),
+                backgroundColor: ['#203A61','#C58C6D','#3B74B8','#7F56D9','#16A34A','#E6B89C','#F59E0B','#10B981','#EF4444','#8B5CF6','#06B6D4','#84CC16','#F97316','#64748B','#D946EF'],
                 borderWidth: 0
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: 'rgba(0,0,0,0.05)' } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-
-    // 3. CMET Supply Dynamics
-    const ctx3 = document.getElementById('chartSupply').getContext('2d');
-    chartSupply = new Chart(ctx3, {
-        type: 'line',
-        data: {
-            labels: data.labels,
-            datasets: [{
-                label: 'Total CMET Supply',
-                data: data.supply,
-                borderColor: colors.primary,
-                backgroundColor: 'rgba(32, 58, 97, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                pointRadius: 0,
-                stepped: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: 'rgba(0,0,0,0.05)' } },
-                x: { grid: { display: false } }
-            }
+            plugins: { legend: { position: 'bottom' } },
+            cutout: '62%'
         }
     });
 }
+
+function renderMixList(mix) {
+    const container = document.getElementById('mix-list');
+    container.innerHTML = mix.map(item => `
+        <div class="mix-item">
+            <strong>${item.material}</strong>
+            <div class="mix-weight">${formatNumber(item.weight * 100)}%</div>
+            <div class="mix-use">${item.use}</div>
+        </div>
+    `).join('');
+}
+
+function baseLineOptions(showLegend = true) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: showLegend, position: 'top' } },
+        scales: {
+            y: { grid: { color: 'rgba(0,0,0,0.05)' } },
+            x: { grid: { display: false } }
+        }
+    };
+}
+
+function baseBarOptions(showLegend = false) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: showLegend } },
+        scales: {
+            y: { grid: { color: 'rgba(0,0,0,0.05)' } },
+            x: { grid: { display: false } }
+        }
+    };
+}
+
+window.initDashboard = initDashboard;
+window.runSim = runSim;
