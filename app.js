@@ -34,7 +34,7 @@ function initDashboard() {
     Chart.defaults.font.family = "'Montserrat', sans-serif";
     Chart.defaults.color = colors.taupe;
 
-    const ids = ['days', 'vol', 'drift', 'eps'];
+    const ids = ['days', 'vol', 'drift', 'eps', 'reinvest'];
     ids.forEach(id => {
         const el = document.getElementById(`input-${id}`);
         if (el) {
@@ -78,6 +78,7 @@ function runSim() {
     const drift = parseFloat(document.getElementById('input-drift').value) / 100;
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const dailyVolUSD = parseFloat(document.getElementById('input-vol-usd').value);
+    const reinvestRate = parseFloat(document.getElementById('input-reinvest').value) / 100;
 
     let price = initialPrice;
     let poolCMET = initialCMET;
@@ -86,6 +87,7 @@ function runSim() {
     let reservePhysical = initialCMET;
     let reserveUSD = reservePhysical * initialPrice;
     let capturedValue = 0;
+    const startInvestment = (initialCMET * initialPrice) * 2;
     let capturedPremium = 0;
     let capturedDiscount = 0;
 
@@ -124,9 +126,10 @@ function runSim() {
                 poolCMET += dCMET;
                 poolUSDT -= dUSDT;
                 totalCMET += dCMET;
-                let boughtPhysical = dUSDT / price;
-                reservePhysical += boughtPhysical;
                 let profit = dUSDT - (dCMET * price);
+                const reinvestUsd = Math.max(profit, 0) * reinvestRate;
+                let boughtPhysical = (dUSDT + reinvestUsd) / price;
+                reservePhysical += boughtPhysical;
                 capturedValue += profit;
                 capturedPremium += profit;
             }
@@ -140,9 +143,10 @@ function runSim() {
                     poolCMET -= dCMET;
                     poolUSDT += dUSDT;
                     totalCMET -= dCMET;
-                    let soldPhysical = dUSDT / price;
-                    reservePhysical -= soldPhysical;
                     let profit = (dCMET * price) - dUSDT;
+                    const reinvestUsd = Math.max(profit, 0) * reinvestRate;
+                    let soldPhysical = Math.max(dUSDT - reinvestUsd, 0) / price;
+                    reservePhysical -= soldPhysical;
                     capturedValue += profit;
                     capturedDiscount += profit;
                 }
@@ -161,11 +165,11 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment);
     drawSimCharts(data);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
 
@@ -175,8 +179,9 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     document.getElementById('kpi-res-sub').innerText = `Start: $${formatNumber((initialCMET * initialPrice) / 1000000)}M`;
     document.getElementById('kpi-supply').innerText = formatNumber(finalSupply);
     document.getElementById('kpi-supply-sub').innerText = `Start: ${formatNumber(initialCMET)}`;
+    const roi = startInvestment > 0 ? (capturedValue / startInvestment) * 100 : 0;
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue);
-    document.getElementById('kpi-captured-sub').innerText = `Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
+    document.getElementById('kpi-captured-sub').innerText = `ROI: ${formatNumber(roi)}% | Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
 }
 
 function drawSimCharts(data) {
