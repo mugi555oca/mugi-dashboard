@@ -75,7 +75,7 @@
                     <input type="range" id="input-reinvest" min="0" max="100" step="5" value="100">
                 </div>
                 <div class="control-group">
-                    <label>Carry Costs (USD/g/Tag): <span id="val-carry">0.010</span></label>
+                    <label>Carry Costs (USD/g/Tag): <span id="val-carry">0.010</span> (<span id="val-carry-pa" style="font-weight:700;">0.38</span>% p.a.)</label>
                     <input type="range" id="input-carry" min="0.001" max="0.1" step="0.001" value="0.01">
                 </div>
                 <button id="btn-run" class="btn-primary" style="margin-top:15px;">Simulation Starten</button>
@@ -137,7 +137,10 @@
                         </div>
                     </div>
                     <div class="kpi-card">
-                        <h4>CMR (NAV)</h4>
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                            <img src="CMR.png" style="width:32px; height:32px; border-radius:4px; object-fit:cover;">
+                            <h4 style="margin:0;">CMR (NAV)</h4>
+                        </div>
                         <div class="kpi-val" id="kpi-res">$0M</div>
                         <div class="kpi-sub" style="margin-bottom:4px;">
                             <span id="kpi-res-start">Start: $0M</span> | 
@@ -148,7 +151,10 @@
                         </div>
                     </div>
                     <div class="kpi-card">
-                        <h4>CMET im Umlauf</h4>
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                            <img src="Tokensymbol.png" style="width:32px; height:32px; border-radius:4px; object-fit:cover;">
+                            <h4 style="margin:0;">CMET im Umlauf</h4>
+                        </div>
                         <div class="kpi-val" id="kpi-supply">0</div>
                         <div class="kpi-sub">
                             <span id="kpi-supply-start">Start: 0</span> | 
@@ -170,7 +176,7 @@
                         <div class="kpi-val" id="kpi-profit">$0</div>
                         <div class="kpi-sub" id="kpi-profit-sub" style="font-size:0.75rem;">Net after Reinvest</div>
                     </div>
-                    <div class="kpi-card accent-card" style="background: rgba(217, 83, 79, 0.05); border-left: 4px solid #D9534F;">
+                    <div class="kpi-card accent-card" style="background: rgba(217, 83, 79, 0.12); border-left: 4px solid #B03A36;">
                         <h4>Net Treasury Result</h4>
                         <div class="kpi-val" id="kpi-treasury">$0</div>
                         <div class="kpi-sub" id="kpi-treasury-sub" style="font-size:0.75rem;">Profit after Carry Costs</div>

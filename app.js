@@ -42,6 +42,11 @@ function initDashboard() {
         if (el) {
             el.addEventListener('input', (e) => {
                 document.getElementById(`val-${id}`).innerText = e.target.value;
+                if (id === 'carry') {
+                    const price = parseFloat(document.getElementById('input-price').value.replace(/,/g, '')) || 950;
+                    const pa = (parseFloat(e.target.value) * 365 / price) * 100;
+                    document.getElementById('val-carry-pa').innerText = pa.toFixed(2);
+                }
             });
         }
     });
@@ -289,11 +294,11 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     // Style the treasury card based on result
     const treasuryCard = document.getElementById('kpi-treasury').parentElement;
     if (treasuryResult < 0) {
-        treasuryCard.style.background = 'rgba(217, 83, 79, 0.05)';
-        treasuryCard.style.borderLeft = '4px solid #D9534F';
+        treasuryCard.style.background = 'rgba(217, 83, 79, 0.15)';
+        treasuryCard.style.borderLeft = '4px solid #B03A36';
     } else {
-        treasuryCard.style.background = 'rgba(76, 175, 80, 0.05)';
-        treasuryCard.style.borderLeft = '4px solid #4CAF50';
+        treasuryCard.style.background = 'rgba(76, 175, 80, 0.15)';
+        treasuryCard.style.borderLeft = '4px solid #2D662F';
     }
 }
 
