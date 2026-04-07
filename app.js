@@ -47,12 +47,13 @@ function initDashboard() {
     });
 
     document.getElementById('btn-run')?.addEventListener('click', runSim);
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    document.getElementById('btn-new-seed')?.addEventListener('click', () => {
+        document.getElementById('input-seed').value = Math.floor(Math.random() * 99999);
+        runSim();
     });
 
     // Handle input formatting for manual entry fields
-    const numericInputs = ['input-cmet', 'input-price', 'input-vol-usd'];
+    const numericInputs = ['input-cmet', 'input-price', 'input-vol-usd', 'input-seed'];
     numericInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -106,11 +107,22 @@ function switchTab(tab) {
     }
 }
 
+// Simple deterministic random generator (Lcg)
+function seedRandom(seed) {
+    return function() {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        return seed / 4294967296;
+    };
+}
+
 function runSim() {
     const getVal = (id) => {
         const el = document.getElementById(id);
         return parseFloat(el.value.replace(/,/g, '')) || 0;
     };
+
+    const seed = parseInt(document.getElementById('input-seed').value) || 1234;
+    const rng = seedRandom(seed);
 
     const days = parseInt(document.getElementById('input-days').value);
     const initialCMET = getVal('input-cmet');
@@ -138,18 +150,17 @@ function runSim() {
 
     for (let t = 0; t <= days; t++) {
         if (t > 0) {
-            let z = (Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() - 3) / 1.5;
+            // Use deterministic RNG for normality approximation
+            let z = (rng() + rng() + rng() + rng() + rng() + rng() - 3) / 1.5;
             price = price * (1 + drift + vol * z);
             
             // Apply Carry Costs
             let dailyCarry = reservePhysical * carryCostPerGram;
             totalCarryCosts += dailyCarry;
-            // Subtract carry costs from reserve value 
-            // In physical terms, we sell a tiny bit of material to cover costs
             reservePhysical -= (dailyCarry / price);
         }
 
-        let tradeDir = (Math.random() - 0.5) * 2;
+        let tradeDir = (rng() - 0.5) * 2;
         let tradeUSD = tradeDir * dailyVolUSD;
         let k = poolCMET * poolUSDT;
 
