@@ -344,6 +344,8 @@ function drawSimCharts(data) {
     if (chartSpread) chartSpread.destroy();
     if (chartSupply) chartSupply.destroy();
 
+    const eps = parseFloat(document.getElementById('input-eps').value) || 0;
+
     chartPriceNav = new Chart(document.getElementById('chartPriceNav').getContext('2d'), {
         type: 'line',
         data: {
@@ -361,9 +363,40 @@ function drawSimCharts(data) {
         type: 'bar',
         data: {
             labels: data.labels,
-            datasets: [{ label: 'Premium / Discount (%)', data: data.spread, backgroundColor: data.spread.map(v => v > 0 ? colors.copper2 : colors.blue), borderWidth: 0 }]
+            datasets: [
+                {
+                    label: 'Premium / Discount (%)',
+                    data: data.spread,
+                    backgroundColor: data.spread.map(v => {
+                        if (v >= eps) return '#8B5E3C';
+                        if (v <= -eps) return '#1F4F82';
+                        return v > 0 ? colors.copper2 : colors.blue;
+                    }),
+                    borderWidth: 0
+                },
+                {
+                    label: 'Upper ε Trigger',
+                    data: data.labels.map(() => eps),
+                    type: 'line',
+                    borderColor: '#8B5E3C',
+                    borderDash: [6, 4],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Lower ε Trigger',
+                    data: data.labels.map(() => -eps),
+                    type: 'line',
+                    borderColor: '#1F4F82',
+                    borderDash: [6, 4],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
         },
-        options: baseBarOptions(false)
+        options: baseBarOptions(true)
     });
 
     chartSupply = new Chart(document.getElementById('chartSupply').getContext('2d'), {
