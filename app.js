@@ -21,12 +21,11 @@ const historyState = {
 };
 
 function formatNumber(num) {
-    return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(num).replace(/\./g, ' ');
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
 }
 
 function formatCurrency(num, decimals = 2) {
-    let fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: decimals }).format(num || 0);
-    return fmt.replace(/,/g, ' ');
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: decimals }).format(num || 0);
 }
 
 function formatMillions(num) {
@@ -52,14 +51,37 @@ function initDashboard() {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    // Handle space separator on input
+    // Handle input formatting for manual entry fields
     const numericInputs = ['input-cmet', 'input-price', 'input-vol-usd'];
     numericInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            // Force number display with space for the USER
-            // Note: HTML5 number inputs don't allow spaces easily, we modify type to text or just use JS to format label if we had one.
-            // For now, we use standard numbers in fields but format the results.
+            // Change type to text to allow custom formatting
+            el.type = 'text';
+            
+            // Initial format
+            el.value = new Intl.NumberFormat('en-US').format(el.value);
+
+            el.addEventListener('input', (e) => {
+                // Remove non-digit characters except period
+                let val = e.target.value.replace(/,/g, '');
+                if (val === '' || isNaN(val)) return;
+                
+                // Keep cursor position logic could be complex, 
+                // but for simple inputs we just reformat on blur or debounced
+            });
+
+            el.addEventListener('blur', (e) => {
+                let val = parseFloat(e.target.value.replace(/,/g, ''));
+                if (!isNaN(val)) {
+                    e.target.value = new Intl.NumberFormat('en-US').format(val);
+                }
+            });
+
+            el.addEventListener('focus', (e) => {
+                // Remove commas for easier editing
+                e.target.value = e.target.value.replace(/,/g, '');
+            });
         }
     });
 
@@ -85,14 +107,19 @@ function switchTab(tab) {
 }
 
 function runSim() {
+    const getVal = (id) => {
+        const el = document.getElementById(id);
+        return parseFloat(el.value.replace(/,/g, '')) || 0;
+    };
+
     const days = parseInt(document.getElementById('input-days').value);
-    const initialCMET = parseFloat(document.getElementById('input-cmet').value);
-    const initialPrice = parseFloat(document.getElementById('input-price').value);
+    const initialCMET = getVal('input-cmet');
+    const initialPrice = getVal('input-price');
     const vol = parseFloat(document.getElementById('input-vol').value) / 100;
     const drift = parseFloat(document.getElementById('input-drift').value) / 100;
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
-    const dailyVolUSD = parseFloat(document.getElementById('input-vol-usd').value);
-    const reinvestRate = 1.0; // Fixed as 100% since we swapped input for carry
+    const dailyVolUSD = getVal('input-vol-usd');
+    const reinvestRate = 1.0; 
     const carryCostPerGram = parseFloat(document.getElementById('input-carry').value);
 
     let price = initialPrice;
