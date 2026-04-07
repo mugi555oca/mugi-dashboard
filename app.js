@@ -9,6 +9,7 @@ const colors = {
     blue: '#3B74B8',
     taupe: '#B5A8A0',
     gold: '#B8860B',
+    purple: '#7F56D9',
     green: '#4CAF50',
     red: '#D9534F'
 };
@@ -23,8 +24,8 @@ function formatNumber(num) {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
 }
 
-function formatCurrency(num) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(num || 0);
+function formatCurrency(num, decimals = 2) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: decimals }).format(num || 0);
 }
 
 function formatMillions(num) {
@@ -196,7 +197,7 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     setPct('kpi-supply-pct', finalSupply, initialCMET);
 
     const roi = startInvestment > 0 ? (capturedValue / startInvestment) * 100 : 0;
-    document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue);
+    document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue, 0);
     document.getElementById('kpi-captured-sub').innerText = `ROI: ${formatNumber(roi)}% | Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
 }
 
@@ -210,7 +211,7 @@ function drawSimCharts(data) {
         data: {
             labels: data.labels,
             datasets: [
-                { label: 'Valyrium Spot Price', data: data.spotPrice, borderColor: colors.gold, borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                { label: 'Valyrium Spot Price', data: data.spotPrice, borderColor: colors.purple, borderWidth: 2, pointRadius: 0, tension: 0.1 },
                 { label: 'Net Asset Value (NAV)', data: data.nav, borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.1)', borderWidth: 3, fill: true, pointRadius: 0, tension: 0.1 },
                 { label: 'CMET Price', data: data.poolPrice, borderColor: colors.primary, borderWidth: 2, pointRadius: 0, tension: 0.1 }
             ]
