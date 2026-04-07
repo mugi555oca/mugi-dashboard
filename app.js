@@ -155,10 +155,9 @@ function runSim() {
             let z = (rng() + rng() + rng() + rng() + rng() + rng() - 3) / 1.5;
             price = price * (1 + drift + vol * z);
             
-            // Apply Carry Costs
+            // Calculate Carry Costs (pure USD liability, NOT reducing material)
             let dailyCarry = reservePhysical * carryCostPerGram;
             totalCarryCosts += dailyCarry;
-            reservePhysical -= (dailyCarry / price);
         }
 
         let tradeDir = (rng() - 0.5) * 2;
