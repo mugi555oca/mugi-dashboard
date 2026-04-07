@@ -272,14 +272,30 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     // Carry Costs
     document.getElementById('kpi-carry').innerText = formatCurrency(totalCarryCosts, 0);
 
-    const roi = startInvestment > 0 ? (capturedValue / startInvestment) * 100 : 0;
+    // Arbitrage Capture (Gross)
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue, 0);
-    document.getElementById('kpi-captured-sub').innerText = `ROI: ${formatNumber(roi)}% | Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
+    document.getElementById('kpi-captured-sub').innerText = `Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
     
-    // Net Profit
+    // Arbitrage Profit (Net after Reinvest)
     document.getElementById('kpi-profit').innerText = formatCurrency(netProfit, 0);
-    const profitMargin = capturedValue > 0 ? (netProfit / capturedValue) * 100 : 0;
-    document.getElementById('kpi-profit-sub').innerText = `Margin: ${formatNumber(profitMargin)}% | Gross: ${formatCurrency(capturedValue)}`;
+    const profitRoi = startInvestment > 0 ? (netProfit / startInvestment) * 100 : 0;
+    document.getElementById('kpi-profit-sub').innerText = `ROI: ${formatNumber(profitRoi)}% | Margin: ${formatNumber(capturedValue > 0 ? (netProfit/capturedValue)*100 : 0)}%`;
+
+    // Net Treasury Result (Profit - Carry Costs)
+    const treasuryResult = netProfit - totalCarryCosts;
+    document.getElementById('kpi-treasury').innerText = formatCurrency(treasuryResult, 0);
+    const treasuryRoi = startInvestment > 0 ? (treasuryResult / startInvestment) * 100 : 0;
+    document.getElementById('kpi-treasury-sub').innerText = `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(totalCarryCosts, 0)}`;
+    
+    // Style the treasury card based on result
+    const treasuryCard = document.getElementById('kpi-treasury').parentElement;
+    if (treasuryResult < 0) {
+        treasuryCard.style.background = 'rgba(217, 83, 79, 0.05)';
+        treasuryCard.style.borderLeft = '4px solid #D9534F';
+    } else {
+        treasuryCard.style.background = 'rgba(76, 175, 80, 0.05)';
+        treasuryCard.style.borderLeft = '4px solid #4CAF50';
+    }
 }
 
 function drawSimCharts(data) {
