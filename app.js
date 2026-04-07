@@ -36,7 +36,7 @@ function initDashboard() {
     Chart.defaults.font.family = "'Montserrat', sans-serif";
     Chart.defaults.color = colors.taupe;
 
-    const ids = ['days', 'vol', 'drift', 'eps', 'reinvest', 'carry'];
+    const ids = ['days', 'vol', 'drift', 'eps', 'eps-tgt', 'reinvest', 'carry'];
     ids.forEach(id => {
         const el = document.getElementById(`input-${id}`);
         if (el) {
@@ -135,6 +135,7 @@ function runSim() {
     const vol = parseFloat(document.getElementById('input-vol').value) / 100;
     const drift = parseFloat(document.getElementById('input-drift').value) / 100;
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
+    const epsTgt = parseFloat(document.getElementById('input-eps-tgt').value) / 100;
     const dailyVolUSD = getVal('input-vol-usd');
     const reinvestRate = parseFloat(document.getElementById('input-reinvest').value) / 100;
     const carryCostPerGram = parseFloat(document.getElementById('input-carry').value);
@@ -184,7 +185,8 @@ function runSim() {
         let poolPrice = poolUSDT / poolCMET;
 
         if (poolPrice > price * (1 + eps)) {
-            let targetPrice = price * (1 + eps / 2);
+            // Premium: mint into pool until target band, then buy base backing + optional reinvest only from capture
+            let targetPrice = price * (1 + epsTgt);
             let targetCMET = Math.sqrt(k / targetPrice);
             let dCMET = targetCMET - poolCMET;
             if (dCMET > 0) {
@@ -192,31 +194,40 @@ function runSim() {
                 poolCMET += dCMET;
                 poolUSDT -= dUSDT;
                 totalCMET += dCMET;
-                let profit = dUSDT - (dCMET * price);
-                const reinvestUsd = Math.max(profit, 0) * reinvestRate;
-                let boughtPhysical = (dUSDT + reinvestUsd) / price;
+
+                const baseBackingUsd = dCMET * price;
+                const grossCapture = dUSDT - baseBackingUsd;
+                const reinvestUsd = Math.max(grossCapture, 0) * reinvestRate;
+                const totalMaterialBuyUsd = baseBackingUsd + reinvestUsd;
+                const boughtPhysical = totalMaterialBuyUsd / price;
                 reservePhysical += boughtPhysical;
-                capturedValue += profit;
-                netProfit += (profit - reinvestUsd);
-                capturedPremium += profit;
+
+                capturedValue += grossCapture;
+                netProfit += (grossCapture - reinvestUsd);
+                capturedPremium += grossCapture;
             }
         } else if (poolPrice < price * (1 - eps)) {
-            let targetPrice = price * (1 - eps / 2);
+            // Discount: sell material at spot, use proceeds to buy back discounted CMET until target band
+            let targetPrice = price * (1 - epsTgt);
             let targetCMET = Math.sqrt(k / targetPrice);
             let dCMET = poolCMET - targetCMET;
             if (dCMET > 0) {
                 let dUSDT = (k / targetCMET) - poolUSDT;
-                if (reserveUSD >= dUSDT) {
+                const materialToSell = dUSDT / price;
+                if (reservePhysical >= materialToSell) {
+                    reservePhysical -= materialToSell;
                     poolCMET -= dCMET;
                     poolUSDT += dUSDT;
                     totalCMET -= dCMET;
-                    let profit = (dCMET * price) - dUSDT;
-                    const reinvestUsd = Math.max(profit, 0) * reinvestRate;
-                    let soldPhysical = Math.max(dUSDT - reinvestUsd, 0) / price;
-                    reservePhysical -= soldPhysical;
-                    capturedValue += profit;
-                    netProfit += (profit - reinvestUsd);
-                    capturedDiscount += profit;
+
+                    const grossCapture = (dCMET * price) - dUSDT;
+                    const reinvestUsd = Math.max(grossCapture, 0) * reinvestRate;
+                    const boughtPhysical = reinvestUsd / price;
+                    reservePhysical += boughtPhysical;
+
+                    capturedValue += grossCapture;
+                    netProfit += (grossCapture - reinvestUsd);
+                    capturedDiscount += grossCapture;
                 }
             }
         }
