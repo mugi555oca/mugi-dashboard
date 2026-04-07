@@ -8,6 +8,7 @@ const colors = {
     copper2: '#E6B89C',
     blue: '#3B74B8',
     taupe: '#B5A8A0',
+    gold: '#B8860B',
     green: '#4CAF50',
     red: '#D9534F'
 };
@@ -172,13 +173,28 @@ function runSim() {
 function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
+    const initialReserveUSD = initialCMET * initialPrice;
+
+    // Help function for pct change coloring
+    const setPct = (id, current, start) => {
+        const el = document.getElementById(id);
+        const pct = ((current / start) - 1) * 100;
+        el.innerText = `${pct >= 0 ? '+' : ''}${formatNumber(pct)}%`;
+        el.style.color = pct >= 0 ? colors.green : colors.red;
+    };
 
     document.getElementById('kpi-nav').innerText = formatCurrency(finalNav);
-    document.getElementById('kpi-nav-sub').innerText = `Start: ${formatCurrency(initialPrice)}`;
+    document.getElementById('kpi-nav-start').innerText = `Start: ${formatCurrency(initialPrice)}`;
+    setPct('kpi-nav-pct', finalNav, initialPrice);
+
     document.getElementById('kpi-res').innerText = `$${formatNumber(reserveUSD / 1000000)}M`;
-    document.getElementById('kpi-res-sub').innerText = `Start: $${formatNumber((initialCMET * initialPrice) / 1000000)}M`;
+    document.getElementById('kpi-res-start').innerText = `Start: $${formatNumber(initialReserveUSD / 1000000)}M`;
+    setPct('kpi-res-pct', reserveUSD, initialReserveUSD);
+
     document.getElementById('kpi-supply').innerText = formatNumber(finalSupply);
-    document.getElementById('kpi-supply-sub').innerText = `Start: ${formatNumber(initialCMET)}`;
+    document.getElementById('kpi-supply-start').innerText = `Start: ${formatNumber(initialCMET)}`;
+    setPct('kpi-supply-pct', finalSupply, initialCMET);
+
     const roi = startInvestment > 0 ? (capturedValue / startInvestment) * 100 : 0;
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue);
     document.getElementById('kpi-captured-sub').innerText = `ROI: ${formatNumber(roi)}% | Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
@@ -194,9 +210,9 @@ function drawSimCharts(data) {
         data: {
             labels: data.labels,
             datasets: [
-                { label: 'Valyrium Spot Price', data: data.spotPrice, borderColor: colors.taupe, borderDash: [5, 5], borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                { label: 'Valyrium Spot Price', data: data.spotPrice, borderColor: colors.gold, borderWidth: 2, pointRadius: 0, tension: 0.1 },
                 { label: 'Net Asset Value (NAV)', data: data.nav, borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.1)', borderWidth: 3, fill: true, pointRadius: 0, tension: 0.1 },
-                { label: 'CMET Pool Price', data: data.poolPrice, borderColor: colors.primary, borderWidth: 2, pointRadius: 0, tension: 0.1 }
+                { label: 'CMET Price', data: data.poolPrice, borderColor: colors.primary, borderWidth: 2, pointRadius: 0, tension: 0.1 }
             ]
         },
         options: baseLineOptions()
