@@ -119,7 +119,7 @@ function runSim() {
     const drift = parseFloat(document.getElementById('input-drift').value) / 100;
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const dailyVolUSD = getVal('input-vol-usd');
-    const reinvestRate = 1.0; 
+    const reinvestRate = parseFloat(document.getElementById('input-reinvest').value) / 100;
     const carryCostPerGram = parseFloat(document.getElementById('input-carry').value);
 
     let price = initialPrice;
