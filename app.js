@@ -142,6 +142,7 @@ function runSim() {
     let reserveUSD = reservePhysical * initialPrice;
     let totalCarryCosts = 0;
     let capturedValue = 0;
+    let netProfit = 0;
     const startInvestment = (initialCMET * initialPrice) * 2;
     let capturedPremium = 0;
     let capturedDiscount = 0;
@@ -192,6 +193,7 @@ function runSim() {
                 let boughtPhysical = (dUSDT + reinvestUsd) / price;
                 reservePhysical += boughtPhysical;
                 capturedValue += profit;
+                netProfit += (profit - reinvestUsd);
                 capturedPremium += profit;
             }
         } else if (poolPrice < price * (1 - eps)) {
@@ -209,6 +211,7 @@ function runSim() {
                     let soldPhysical = Math.max(dUSDT - reinvestUsd, 0) / price;
                     reservePhysical -= soldPhysical;
                     capturedValue += profit;
+                    netProfit += (profit - reinvestUsd);
                     capturedDiscount += profit;
                 }
             }
@@ -226,11 +229,11 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit);
     drawSimCharts(data);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -272,6 +275,11 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     const roi = startInvestment > 0 ? (capturedValue / startInvestment) * 100 : 0;
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue, 0);
     document.getElementById('kpi-captured-sub').innerText = `ROI: ${formatNumber(roi)}% | Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
+    
+    // Net Profit
+    document.getElementById('kpi-profit').innerText = formatCurrency(netProfit, 0);
+    const profitMargin = capturedValue > 0 ? (netProfit / capturedValue) * 100 : 0;
+    document.getElementById('kpi-profit-sub').innerText = `Margin: ${formatNumber(profitMargin)}% | Gross: ${formatCurrency(capturedValue)}`;
 }
 
 function drawSimCharts(data) {

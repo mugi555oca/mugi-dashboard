@@ -30,11 +30,30 @@
             </div>
 
             <div class="controls-section" id="sim-controls">
-                <h3>System Parameter</h3>
+                <h3>Markt Parameter</h3>
                 <div class="control-group">
                     <label>Simulationsdauer (Tage): <span id="val-days">365</span></label>
                     <input type="range" id="input-days" min="30" max="1000" step="1" value="365">
                 </div>
+                <div class="control-group">
+                    <label>Markt-Trend (Drift): <span id="val-drift">0.05</span>%</label>
+                    <input type="range" id="input-drift" min="-0.35" max="0.35" step="0.001" value="0.05">
+                </div>
+                <div class="control-group">
+                    <label>Volatilität (Täglich): <span id="val-vol">2.0</span>%</label>
+                    <input type="range" id="input-vol" min="0" max="10" step="0.1" value="2.0">
+                </div>
+                <div class="control-group">
+                    <label>Markt-Szenario (Seed):</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="number" id="input-seed" value="1234" style="width:70%;">
+                        <button id="btn-new-seed" class="btn-primary" style="padding:0 10px; width:30%;" title="Zufälliges Szenario">🎲</button>
+                    </div>
+                </div>
+
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">
+                
+                <h3>Protokoll Parameter</h3>
                 <div class="control-group">
                     <label>Start-Reserve (CMET):</label>
                     <input type="number" id="input-cmet" value="10000" step="1000">
@@ -42,14 +61,6 @@
                 <div class="control-group">
                     <label>Init. CM-Preis (USD/g):</label>
                     <input type="number" id="input-price" value="950" step="10">
-                </div>
-                <div class="control-group">
-                    <label>Volatilität (Täglich): <span id="val-vol">2.0</span>%</label>
-                    <input type="range" id="input-vol" min="0" max="10" step="0.1" value="2.0">
-                </div>
-                <div class="control-group">
-                    <label>Markt-Trend (Drift): <span id="val-drift">0.05</span>%</label>
-                    <input type="range" id="input-drift" min="-0.35" max="0.35" step="0.001" value="0.05">
                 </div>
                 <div class="control-group">
                     <label>Intervention Band (ε): <span id="val-eps">0.5</span>%</label>
@@ -66,13 +77,6 @@
                 <div class="control-group">
                     <label>Carry Costs (USD/g/Tag): <span id="val-carry">0.010</span></label>
                     <input type="range" id="input-carry" min="0.001" max="0.1" step="0.001" value="0.01">
-                </div>
-                <div class="control-group">
-                    <label>Markt-Szenario (Seed):</label>
-                    <div style="display:flex; gap:5px;">
-                        <input type="number" id="input-seed" value="1234" style="width:70%;">
-                        <button id="btn-new-seed" class="btn-primary" style="padding:0 10px; width:30%;" title="Zufälliges Szenario">🎲</button>
-                    </div>
                 </div>
                 <button id="btn-run" class="btn-primary" style="margin-top:15px;">Simulation Starten</button>
             </div>
@@ -159,7 +163,12 @@
                     <div class="kpi-card accent-card">
                         <h4>Arbitrage Capture</h4>
                         <div class="kpi-val" id="kpi-captured">$0</div>
-                        <div class="kpi-sub" id="kpi-captured-sub" style="font-size:0.75rem;">Profit Shared</div>
+                        <div class="kpi-sub" id="kpi-captured-sub" style="font-size:0.75rem;">Total Gross Capture</div>
+                    </div>
+                    <div class="kpi-card accent-card" style="background: rgba(32, 58, 97, 0.05); border-left: 4px solid #203A61;">
+                        <h4>Arbitrage Profit</h4>
+                        <div class="kpi-val" id="kpi-profit">$0</div>
+                        <div class="kpi-sub" id="kpi-profit-sub" style="font-size:0.75rem;">Net after Reinvest</div>
                     </div>
                 </section>
 
