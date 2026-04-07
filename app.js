@@ -21,11 +21,12 @@ const historyState = {
 };
 
 function formatNumber(num) {
-    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
+    return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(num).replace(/\./g, ' ');
 }
 
 function formatCurrency(num, decimals = 2) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: decimals }).format(num || 0);
+    let fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: decimals }).format(num || 0);
+    return fmt.replace(/,/g, ' ');
 }
 
 function formatMillions(num) {
@@ -36,7 +37,7 @@ function initDashboard() {
     Chart.defaults.font.family = "'Montserrat', sans-serif";
     Chart.defaults.color = colors.taupe;
 
-    const ids = ['days', 'vol', 'drift', 'eps', 'reinvest'];
+    const ids = ['days', 'vol', 'drift', 'eps', 'reinvest', 'carry'];
     ids.forEach(id => {
         const el = document.getElementById(`input-${id}`);
         if (el) {
@@ -49,6 +50,17 @@ function initDashboard() {
     document.getElementById('btn-run')?.addEventListener('click', runSim);
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // Handle space separator on input
+    const numericInputs = ['input-cmet', 'input-price', 'input-vol-usd'];
+    numericInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            // Force number display with space for the USER
+            // Note: HTML5 number inputs don't allow spaces easily, we modify type to text or just use JS to format label if we had one.
+            // For now, we use standard numbers in fields but format the results.
+        }
     });
 
     runSim();
@@ -80,7 +92,8 @@ function runSim() {
     const drift = parseFloat(document.getElementById('input-drift').value) / 100;
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const dailyVolUSD = parseFloat(document.getElementById('input-vol-usd').value);
-    const reinvestRate = parseFloat(document.getElementById('input-reinvest').value) / 100;
+    const reinvestRate = 1.0; // Fixed as 100% since we swapped input for carry
+    const carryCostPerGram = parseFloat(document.getElementById('input-carry').value);
 
     let price = initialPrice;
     let poolCMET = initialCMET;
@@ -88,6 +101,7 @@ function runSim() {
     let totalCMET = initialCMET;
     let reservePhysical = initialCMET;
     let reserveUSD = reservePhysical * initialPrice;
+    let totalCarryCosts = 0;
     let capturedValue = 0;
     const startInvestment = (initialCMET * initialPrice) * 2;
     let capturedPremium = 0;
@@ -99,6 +113,13 @@ function runSim() {
         if (t > 0) {
             let z = (Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() - 3) / 1.5;
             price = price * (1 + drift + vol * z);
+            
+            // Apply Carry Costs
+            let dailyCarry = reservePhysical * carryCostPerGram;
+            totalCarryCosts += dailyCarry;
+            // Subtract carry costs from reserve value 
+            // In physical terms, we sell a tiny bit of material to cover costs
+            reservePhysical -= (dailyCarry / price);
         }
 
         let tradeDir = (Math.random() - 0.5) * 2;
@@ -167,13 +188,14 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical);
     drawSimCharts(data);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
+    const finalSpot = data.spotPrice[data.spotPrice.length - 1];
     const initialReserveUSD = initialCMET * initialPrice;
 
     // Help function for pct change coloring
@@ -184,6 +206,11 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
         el.style.color = pct >= 0 ? colors.green : colors.red;
     };
 
+    // Valyrium Spotpreis Kasten
+    document.getElementById('kpi-spot').innerText = formatCurrency(finalSpot);
+    document.getElementById('kpi-spot-start').innerText = `Start: ${formatCurrency(initialPrice)}`;
+    setPct('kpi-spot-pct', finalSpot, initialPrice);
+
     document.getElementById('kpi-nav').innerText = formatCurrency(finalNav);
     document.getElementById('kpi-nav-start').innerText = `Start: ${formatCurrency(initialPrice)}`;
     setPct('kpi-nav-pct', finalNav, initialPrice);
@@ -191,10 +218,18 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     document.getElementById('kpi-res').innerText = `$${formatNumber(reserveUSD / 1000000)}M`;
     document.getElementById('kpi-res-start').innerText = `Start: $${formatNumber(initialReserveUSD / 1000000)}M`;
     setPct('kpi-res-pct', reserveUSD, initialReserveUSD);
+    
+    // Grams info in CMR card
+    document.getElementById('kpi-res-grams').innerText = `${formatNumber(finalPhysical)} g`;
+    document.getElementById('kpi-res-grams-start').innerText = `${formatNumber(initialCMET)} g`;
+    setPct('kpi-res-grams-pct', finalPhysical, initialCMET);
 
     document.getElementById('kpi-supply').innerText = formatNumber(finalSupply);
     document.getElementById('kpi-supply-start').innerText = `Start: ${formatNumber(initialCMET)}`;
     setPct('kpi-supply-pct', finalSupply, initialCMET);
+
+    // Carry Costs
+    document.getElementById('kpi-carry').innerText = formatCurrency(totalCarryCosts, 0);
 
     const roi = startInvestment > 0 ? (capturedValue / startInvestment) * 100 : 0;
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue, 0);

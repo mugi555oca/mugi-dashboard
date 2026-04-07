@@ -60,8 +60,8 @@
                     <input type="number" id="input-vol-usd" value="50000" step="5000">
                 </div>
                 <div class="control-group">
-                    <label>Reinvest-Quote: <span id="val-reinvest">100</span>%</label>
-                    <input type="range" id="input-reinvest" min="0" max="100" step="5" value="100">
+                    <label>Carry Costs (USD/g/Tag): <span id="val-carry">0.010</span></label>
+                    <input type="range" id="input-carry" min="0.001" max="0.1" step="0.001" value="0.01">
                 </div>
                 <button id="btn-run" class="btn-primary" style="margin-top:15px;">Simulation Starten</button>
             </div>
@@ -106,6 +106,14 @@
             <section id="tab-sim" class="tab-panel active">
                 <section class="kpi-grid">
                     <div class="kpi-card">
+                        <h4>Valyrium Spotpreis</h4>
+                        <div class="kpi-val" id="kpi-spot">$0.00</div>
+                        <div class="kpi-sub">
+                            <span id="kpi-spot-start">Start: $0.00</span> | 
+                            <span id="kpi-spot-pct" style="font-weight:700;">0.00%</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
                         <h4>End-NAV (pro Token)</h4>
                         <div class="kpi-val" id="kpi-nav">$0.00</div>
                         <div class="kpi-sub">
@@ -114,11 +122,14 @@
                         </div>
                     </div>
                     <div class="kpi-card">
-                        <h4>Total Reserve Value</h4>
+                        <h4>CMR (NAV)</h4>
                         <div class="kpi-val" id="kpi-res">$0M</div>
-                        <div class="kpi-sub">
+                        <div class="kpi-sub" style="margin-bottom:4px;">
                             <span id="kpi-res-start">Start: $0M</span> | 
                             <span id="kpi-res-pct" style="font-weight:700;">0.00%</span>
+                        </div>
+                        <div class="kpi-sub" style="font-size:0.75rem; border-top:1px solid rgba(0,0,0,0.05); pt:4px;">
+                            <span id="kpi-res-grams">0g</span> (Start: <span id="kpi-res-grams-start">0g</span> | <span id="kpi-res-grams-pct">0%</span>)
                         </div>
                     </div>
                     <div class="kpi-card">
@@ -128,6 +139,11 @@
                             <span id="kpi-supply-start">Start: 0</span> | 
                             <span id="kpi-supply-pct" style="font-weight:700;">0.00%</span>
                         </div>
+                    </div>
+                    <div class="kpi-card">
+                        <h4>Carry Costs (Total)</h4>
+                        <div class="kpi-val" id="kpi-carry" style="color:#D9534F;">$0</div>
+                        <div class="kpi-sub">Storage & Insurance</div>
                     </div>
                     <div class="kpi-card accent-card">
                         <h4>Arbitrage Capture</h4>
