@@ -36,7 +36,7 @@ function initDashboard() {
     Chart.defaults.font.family = "'Montserrat', sans-serif";
     Chart.defaults.color = colors.taupe;
 
-    const ids = ['days', 'vol', 'drift', 'eps', 'eps-tgt', 'reinvest', 'carry'];
+    const ids = ['days', 'vol', 'drift', 'eps', 'eps-tgt', 'reinvest', 'carry', 'vol-mult', 'stockup-premium'];
     ids.forEach(id => {
         const el = document.getElementById(`input-${id}`);
         if (el) {
@@ -56,9 +56,12 @@ function initDashboard() {
         document.getElementById('input-seed').value = Math.floor(Math.random() * 99999);
         runSim();
     });
+    document.getElementById('input-enable-stockup')?.addEventListener('change', (e) => {
+        document.getElementById('stockup-controls').classList.toggle('hidden', !e.target.checked);
+    });
 
     // Handle input formatting for manual entry fields
-    const numericInputs = ['input-cmet', 'input-price', 'input-vol-usd', 'input-seed'];
+    const numericInputs = ['input-cmet', 'input-price', 'input-buy-usd', 'input-sell-cmet', 'input-seed', 'input-stockup-frequency', 'input-stockup-grams'];
     numericInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -136,9 +139,15 @@ function runSim() {
     const drift = parseFloat(document.getElementById('input-drift').value) / 100;
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const epsTgt = parseFloat(document.getElementById('input-eps-tgt').value) / 100;
-    const dailyVolUSD = getVal('input-vol-usd');
+    const avgBuyUSD = getVal('input-buy-usd');
+    const avgSellCMET = getVal('input-sell-cmet');
+    const volMult = parseFloat(document.getElementById('input-vol-mult').value);
     const reinvestRate = parseFloat(document.getElementById('input-reinvest').value) / 100;
     const carryCostPerGram = parseFloat(document.getElementById('input-carry').value);
+    const enableStockup = document.getElementById('input-enable-stockup').checked;
+    const stockupFrequency = getVal('input-stockup-frequency');
+    const stockupGrams = getVal('input-stockup-grams');
+    const stockupPremium = parseFloat(document.getElementById('input-stockup-premium').value) / 100;
 
     let price = initialPrice;
     let poolCMET = initialCMET;
@@ -166,20 +175,37 @@ function runSim() {
             totalCarryCosts += dailyCarry;
         }
 
-        let tradeDir = (rng() - 0.5) * 2;
-        let tradeUSD = tradeDir * dailyVolUSD;
+        // External market flow: separated demand/supply with configurable bias and noise
+        const buyNoise = Math.max(0, 1 + ((rng() - 0.5) * 2 * volMult));
+        const sellNoise = Math.max(0, 1 + ((rng() - 0.5) * 2 * volMult));
+        const extBuyUSD = avgBuyUSD * buyNoise;
+        const extSellCMET = avgSellCMET * sellNoise;
         let k = poolCMET * poolUSDT;
 
-        if (tradeUSD > 0) {
-            let newUSDT = poolUSDT + tradeUSD;
-            poolCMET = k / newUSDT;
-            poolUSDT = newUSDT;
-        } else if (tradeUSD < 0) {
-            let newUSDT = poolUSDT + tradeUSD;
-            if (newUSDT > 0) {
-                poolCMET = k / newUSDT;
-                poolUSDT = newUSDT;
-            }
+        // First external sells into pool
+        if (extSellCMET > 0) {
+            const newPoolCMET = poolCMET + extSellCMET;
+            const newPoolUSDT = k / newPoolCMET;
+            poolCMET = newPoolCMET;
+            poolUSDT = newPoolUSDT;
+            k = poolCMET * poolUSDT;
+        }
+
+        // Then external buys from pool
+        if (extBuyUSD > 0) {
+            const newPoolUSDT = poolUSDT + extBuyUSD;
+            const newPoolCMET = k / newPoolUSDT;
+            poolCMET = newPoolCMET;
+            poolUSDT = newPoolUSDT;
+        }
+
+        // Optional stock-up mechanism independent of secondary-market arbitrage
+        if (enableStockup && stockupFrequency > 0 && t > 0 && t % stockupFrequency === 0) {
+            const stockupValueUsd = stockupGrams * price;
+            const issuePrice = (reservePhysical * price / totalCMET) * (1 + stockupPremium);
+            const issuedCMET = issuePrice > 0 ? stockupValueUsd / issuePrice : 0;
+            reservePhysical += stockupGrams;
+            totalCMET += issuedCMET;
         }
 
         let poolPrice = poolUSDT / poolCMET;

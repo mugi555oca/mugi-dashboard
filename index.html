@@ -71,12 +71,40 @@
                     <input type="range" id="input-eps-tgt" min="0.0" max="1.0" step="0.01" value="0.05">
                 </div>
                 <div class="control-group">
-                    <label>Tägl. Handelsvol. (USD):</label>
-                    <input type="number" id="input-vol-usd" value="50000" step="5000">
+                    <label>Avg. Daily Buys (USDT):</label>
+                    <input type="number" id="input-buy-usd" value="50000" step="5000">
+                </div>
+                <div class="control-group">
+                    <label>Avg. Daily Sells (CMET):</label>
+                    <input type="number" id="input-sell-cmet" value="20" step="1">
+                </div>
+                <div class="control-group">
+                    <label>Volume Noise: <span id="val-vol-mult">1.0</span></label>
+                    <input type="range" id="input-vol-mult" min="0" max="2" step="0.05" value="1.0">
                 </div>
                 <div class="control-group">
                     <label>Reinvest-Quote: <span id="val-reinvest">100</span>%</label>
                     <input type="range" id="input-reinvest" min="0" max="100" step="5" value="100">
+                </div>
+                <div class="control-group stockup-toggle">
+                    <label style="justify-content:flex-start; gap:10px;">
+                        <input type="checkbox" id="input-enable-stockup">
+                        Stock-Up Mechanismus aktivieren
+                    </label>
+                </div>
+                <div id="stockup-controls" class="hidden">
+                    <div class="control-group">
+                        <label>Stock-Up Frequency (Tage):</label>
+                        <input type="number" id="input-stockup-frequency" value="30" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label>Stock-Up Size (g Valyrium):</label>
+                        <input type="number" id="input-stockup-grams" value="500" step="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Stock-Up Premium on NAV: <span id="val-stockup-premium">0.0</span>%</label>
+                        <input type="range" id="input-stockup-premium" min="0" max="10" step="0.1" value="0.0">
+                    </div>
                 </div>
                 <div class="control-group">
                     <label>Carry Costs (USD/g/Tag): <span id="val-carry">0.010</span> (<span id="val-carry-pa" style="font-weight:700;">0.38</span>% p.a.)</label>
