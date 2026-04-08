@@ -266,7 +266,7 @@ function runSim() {
         data.spotPrice.push(price);
         data.nav.push(nav);
         data.poolPrice.push(poolPrice);
-        data.spread.push(((poolPrice / nav) - 1) * 100);
+        data.spread.push(((poolPrice / price) - 1) * 100);
         data.supply.push(totalCMET);
     }
 
