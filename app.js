@@ -162,7 +162,7 @@ function runSim() {
     let capturedPremium = 0;
     let capturedDiscount = 0;
 
-    const data = { labels: [], spotPrice: [], nav: [], poolPrice: [], spread: [], supply: [] };
+    const data = { labels: [], spotPrice: [], nav: [], poolPrice: [], spread: [], spreadPost: [], supply: [] };
 
     for (let t = 0; t <= days; t++) {
         if (t > 0) {
@@ -209,6 +209,7 @@ function runSim() {
         }
 
         let poolPrice = poolUSDT / poolCMET;
+        const preInterventionSpread = ((poolPrice / price) - 1) * 100;
 
         if (poolPrice > price * (1 + eps)) {
             // Premium: mint into pool until target band, then buy base backing + optional reinvest only from capture
@@ -259,6 +260,7 @@ function runSim() {
         }
 
         poolPrice = poolUSDT / poolCMET;
+        const postInterventionSpread = ((poolPrice / price) - 1) * 100;
         reserveUSD = reservePhysical * price;
         let nav = reserveUSD / totalCMET;
 
@@ -266,7 +268,8 @@ function runSim() {
         data.spotPrice.push(price);
         data.nav.push(nav);
         data.poolPrice.push(poolPrice);
-        data.spread.push(((poolPrice / price) - 1) * 100);
+        data.spread.push(preInterventionSpread);
+        data.spreadPost.push(postInterventionSpread);
         data.supply.push(totalCMET);
     }
 
@@ -365,7 +368,7 @@ function drawSimCharts(data) {
             labels: data.labels,
             datasets: [
                 {
-                    label: 'Premium / Discount (%)',
+                    label: 'Pre-Intervention Spread (%)',
                     data: data.spread,
                     backgroundColor: data.spread.map(v => {
                         if (v >= eps) return '#8B5E3C';
@@ -373,6 +376,16 @@ function drawSimCharts(data) {
                         return v > 0 ? colors.copper2 : colors.blue;
                     }),
                     borderWidth: 0
+                },
+                {
+                    label: 'Post-Intervention Spread (%)',
+                    data: data.spreadPost,
+                    type: 'line',
+                    borderColor: colors.taupe,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false
                 },
                 {
                     label: 'Upper ε Trigger',
