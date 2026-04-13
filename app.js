@@ -293,11 +293,11 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue, days);
     drawSimCharts(data);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue, days) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -335,6 +335,13 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
 
     // Carry Costs
     document.getElementById('kpi-carry').innerText = formatCurrency(totalCarryCosts, 0);
+
+    // Carry Capacity
+    const incomeBase = netProfit + (enableStockup ? stockupRevenue : 0);
+    const carryCapacity = (days > 0 && finalPhysical > 0) ? (incomeBase / finalPhysical / days) : 0;
+    document.getElementById('kpi-carry-capacity').innerText = `$${formatNumber(carryCapacity)}`;
+    const carryCapacityPa = finalSpot > 0 ? (carryCapacity * 365 / finalSpot) * 100 : 0;
+    document.getElementById('kpi-carry-capacity-sub').innerText = `≈ ${formatNumber(carryCapacityPa)}% p.a. affordable`;
 
     // Arbitrage Capture (Gross)
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue, 0);
