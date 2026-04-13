@@ -106,7 +106,7 @@ function switchTab(tab) {
     document.getElementById('history-controls').classList.toggle('hidden', tab !== 'history');
 
     if (tab === 'sim') {
-        document.getElementById('page-title').innerText = 'Material Money Network — Treasury Flywheel';
+        document.getElementById('page-title').innerText = 'CMET - Critical Material Exposure Token';
         document.getElementById('page-subtitle').innerText = 'Interaktive Soft-Peg-/PAT-Mechanik';
     } else {
         document.getElementById('page-title').innerText = 'CMET Historical PAT Backtest';
