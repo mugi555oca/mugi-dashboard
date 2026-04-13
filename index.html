@@ -71,16 +71,16 @@
                     <input type="range" id="input-eps-tgt" min="0.0" max="1.0" step="0.01" value="0.05">
                 </div>
                 <div class="control-group">
-                    <label title="Average daily external buy demand entering the pool in USDT. Higher buy flow tends to create more premium conditions and more mint-side arbitrage.">Avg. Daily Buys (USDT):</label>
+                    <label title="Average daily external buy demand entering the pool in USD. The estimated CMET equivalent is shown next to it using the current initial price.">Avg. Daily Buys (USD): <span id="buy-cmet-equiv">≈ 52.63 CMET</span></label>
                     <input type="number" id="input-buy-usd" value="50000" step="5000">
                 </div>
                 <div class="control-group">
-                    <label title="Average daily external sell pressure entering the pool in CMET. Higher sell flow tends to create more discount conditions and more burn-side arbitrage.">Avg. Daily Sells (CMET):</label>
-                    <input type="number" id="input-sell-cmet" value="20" step="1">
+                    <label title="Average daily external sell pressure expressed in USD notional. The estimated CMET equivalent is shown next to it using the current initial price.">Avg. Daily Sells (USD): <span id="sell-cmet-equiv">≈ 20.00 CMET</span></label>
+                    <input type="number" id="input-sell-usd" value="19000" step="1000">
                 </div>
                 <div class="control-group">
                     <label title="Volume noise controls how much daily buy and sell flows fluctuate around their averages. Higher values make the market more irregular and trigger arbitrage more often.">Volume Noise: <span id="val-vol-mult">1.0</span></label>
-                    <input type="range" id="input-vol-mult" min="0" max="2" step="0.05" value="1.0">
+                    <input type="range" id="input-vol-mult" min="0" max="5" step="0.1" value="1.0">
                 </div>
                 <div class="control-group">
                     <label title="Share of arbitrage capture that is reinvested into additional material. Higher reinvestment grows the reserve faster but reduces immediately available profit.">Reinvest-Quote: <span id="val-reinvest">100</span>%</label>

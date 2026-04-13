@@ -61,7 +61,7 @@ function initDashboard() {
     });
 
     // Handle input formatting for manual entry fields
-    const numericInputs = ['input-cmet', 'input-price', 'input-buy-usd', 'input-sell-cmet', 'input-seed', 'input-stockup-frequency', 'input-stockup-grams'];
+    const numericInputs = ['input-cmet', 'input-price', 'input-buy-usd', 'input-sell-usd', 'input-seed', 'input-stockup-frequency', 'input-stockup-grams'];
     numericInputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -94,6 +94,20 @@ function initDashboard() {
         }
     });
 
+    const updateFlowEquivs = () => {
+        const price = parseFloat((document.getElementById('input-price')?.value || '0').replace(/,/g, '')) || 1;
+        const buyUsd = parseFloat((document.getElementById('input-buy-usd')?.value || '0').replace(/,/g, '')) || 0;
+        const sellUsd = parseFloat((document.getElementById('input-sell-usd')?.value || '0').replace(/,/g, '')) || 0;
+        document.getElementById('buy-cmet-equiv').innerText = `≈ ${formatNumber(buyUsd / price)} CMET`;
+        document.getElementById('sell-cmet-equiv').innerText = `≈ ${formatNumber(sellUsd / price)} CMET`;
+    };
+
+    ['input-price', 'input-buy-usd', 'input-sell-usd'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateFlowEquivs);
+        document.getElementById(id)?.addEventListener('blur', updateFlowEquivs);
+    });
+
+    updateFlowEquivs();
     runSim();
     loadHistoryData();
 }
@@ -140,7 +154,8 @@ function runSim() {
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const epsTgt = parseFloat(document.getElementById('input-eps-tgt').value) / 100;
     const avgBuyUSD = getVal('input-buy-usd');
-    const avgSellCMET = getVal('input-sell-cmet');
+    const avgSellUSD = getVal('input-sell-usd');
+    const avgSellCMET = initialPrice > 0 ? avgSellUSD / initialPrice : 0;
     const volMult = parseFloat(document.getElementById('input-vol-mult').value);
     const reinvestRate = parseFloat(document.getElementById('input-reinvest').value) / 100;
     const carryCostPerGram = parseFloat(document.getElementById('input-carry').value);
