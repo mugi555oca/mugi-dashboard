@@ -56,6 +56,12 @@ function initDashboard() {
         document.getElementById('input-seed').value = Math.floor(Math.random() * 99999);
         runSim();
     });
+    document.getElementById('input-enable-trading')?.addEventListener('change', (e) => {
+        document.getElementById('trading-controls').classList.toggle('hidden', !e.target.checked);
+    });
+    document.getElementById('input-enable-carry')?.addEventListener('change', (e) => {
+        document.getElementById('carry-controls').classList.toggle('hidden', !e.target.checked);
+    });
     document.getElementById('input-enable-stockup')?.addEventListener('change', (e) => {
         document.getElementById('stockup-controls').classList.toggle('hidden', !e.target.checked);
     });
@@ -153,12 +159,14 @@ function runSim() {
     const drift = parseFloat(document.getElementById('input-drift').value) / 100;
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const epsTgt = parseFloat(document.getElementById('input-eps-tgt').value) / 100;
-    const avgBuyUSD = getVal('input-buy-usd');
-    const avgSellUSD = getVal('input-sell-usd');
+    const tradingEnabled = document.getElementById('input-enable-trading')?.checked;
+    const carryEnabled = document.getElementById('input-enable-carry')?.checked;
+    const avgBuyUSD = tradingEnabled ? getVal('input-buy-usd') : 0;
+    const avgSellUSD = tradingEnabled ? getVal('input-sell-usd') : 0;
     const avgSellCMET = initialPrice > 0 ? avgSellUSD / initialPrice : 0;
-    const volMult = parseFloat(document.getElementById('input-vol-mult').value);
+    const volMult = tradingEnabled ? parseFloat(document.getElementById('input-vol-mult').value) : 0;
     const reinvestRate = parseFloat(document.getElementById('input-reinvest').value) / 100;
-    const carryCostPerGram = parseFloat(document.getElementById('input-carry').value);
+    const carryCostPerGram = carryEnabled ? parseFloat(document.getElementById('input-carry').value) : 0;
     const enableStockup = document.getElementById('input-enable-stockup').checked;
     const stockupFrequency = getVal('input-stockup-frequency');
     const stockupGrams = getVal('input-stockup-grams');

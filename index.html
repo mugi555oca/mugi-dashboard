@@ -30,85 +30,108 @@
             </div>
 
             <div class="controls-section" id="sim-controls">
-                <h3 title="Market parameters define the external environment driving CMET price behavior. They shape the reference price path and the market scenario the protocol reacts to.">Markt Parameter</h3>
-                <div class="control-group">
-                    <label title="Sets the total number of simulated days. A longer period shows how the mechanism behaves over time under repeated market conditions.">Simulationsdauer (Tage): <span id="val-days">365</span></label>
-                    <input type="range" id="input-days" min="30" max="1000" step="1" value="365">
-                </div>
-                <div class="control-group">
-                    <label title="Drift is the average directional move of the Valyrium spot price per day. Positive drift means an upward market trend, negative drift means a downward one.">Markt-Trend (Drift): <span id="val-drift">0.05</span>%</label>
-                    <input type="range" id="input-drift" min="-0.35" max="0.35" step="0.001" value="0.05">
-                </div>
-                <div class="control-group">
-                    <label title="Daily volatility controls how strongly the Valyrium spot price fluctuates around its trend. Higher values create a more unstable and more arbitrage-active market.">Volatilität (Täglich): <span id="val-vol">2.0</span>%</label>
-                    <input type="range" id="input-vol" min="0" max="10" step="0.1" value="2.0">
-                </div>
-                <div class="control-group">
-                    <label title="The seed fixes the random market path. Keeping the same seed lets you compare parameter changes against exactly the same scenario.">Markt-Szenario (Seed):</label>
-                    <div style="display:flex; gap:5px;">
-                        <input type="number" id="input-seed" value="1234" style="width:70%;">
-                        <button id="btn-new-seed" class="btn-primary" style="padding:0 10px; width:30%;" title="Zufälliges Szenario">🎲</button>
+                <div class="param-section param-market">
+                    <h3 title="Market parameters define the external environment driving CMET price behavior. They shape the reference price path and the market scenario the protocol reacts to.">Markt Parameter</h3>
+                    <div class="control-group">
+                        <label title="Sets the total number of simulated days. A longer period shows how the mechanism behaves over time under repeated market conditions.">Simulationsdauer (Tage): <span id="val-days">365</span></label>
+                        <input type="range" id="input-days" min="30" max="1000" step="1" value="365">
+                    </div>
+                    <div class="control-group">
+                        <label title="Drift is the average directional move of the Valyrium spot price per day. Positive drift means an upward market trend, negative drift means a downward one.">Markt-Trend (Drift): <span id="val-drift">0.05</span>%</label>
+                        <input type="range" id="input-drift" min="-0.35" max="0.35" step="0.001" value="0.05">
+                    </div>
+                    <div class="control-group">
+                        <label title="Daily volatility controls how strongly the Valyrium spot price fluctuates around its trend. Higher values create a more unstable and more arbitrage-active market.">Volatilität (Täglich): <span id="val-vol">2.0</span>%</label>
+                        <input type="range" id="input-vol" min="0" max="10" step="0.1" value="2.0">
+                    </div>
+                    <div class="control-group">
+                        <label title="The seed fixes the random market path. Keeping the same seed lets you compare parameter changes against exactly the same scenario.">Markt-Szenario (Seed):</label>
+                        <div style="display:flex; gap:5px;">
+                            <input type="number" id="input-seed" value="1234" style="width:70%;">
+                            <button id="btn-new-seed" class="btn-primary" style="padding:0 10px; width:30%;" title="Zufälliges Szenario">🎲</button>
+                        </div>
                     </div>
                 </div>
 
-                <hr style="margin: 15px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">
-                
-                <h3 title="Protocol parameters define how CMET responds to market dislocations. They control intervention logic, reserve growth, and treasury outcomes.">Protokoll Parameter</h3>
-                <div class="control-group">
-                    <label title="Initial CMET pool reserve at launch. A larger pool usually means lower slippage and more price inertia.">Start-Reserve (CMET):</label>
-                    <input type="number" id="input-cmet" value="10000" step="1000">
-                </div>
-                <div class="control-group">
-                    <label title="Initial Valyrium reference price in USD per gram. This is the starting off-chain anchor for NAV and market comparisons.">Init. CM-Preis (USD/g):</label>
-                    <input type="number" id="input-price" value="950" step="10">
-                </div>
-                <div class="control-group">
-                    <label title="This is the trigger threshold for protocol intervention. If CMET deviates beyond this band from the reference price, mint or burn logic activates.">Intervention Band (ε): <span id="val-eps">0.5</span>%</label>
-                    <input type="range" id="input-eps" min="0.1" max="5.0" step="0.1" value="0.5">
-                </div>
-                <div class="control-group">
-                    <label title="After an intervention, the protocol steers the price back toward this tighter target band. A smaller target means deeper corrective action and usually more capture per event.">Target Band (ε_tgt): <span id="val-eps-tgt">0.05</span>%</label>
-                    <input type="range" id="input-eps-tgt" min="0.0" max="1.0" step="0.01" value="0.05">
-                </div>
-                <div class="control-group">
-                    <label title="Average daily external buy demand entering the pool in USD. The estimated CMET equivalent is shown next to it using the current initial price.">Avg. Daily Buys (USD): <span id="buy-cmet-equiv">≈ 52.63 CMET</span></label>
-                    <input type="number" id="input-buy-usd" value="50000" step="5000">
-                </div>
-                <div class="control-group">
-                    <label title="Average daily external sell pressure expressed in USD notional. The estimated CMET equivalent is shown next to it using the current initial price.">Avg. Daily Sells (USD): <span id="sell-cmet-equiv">≈ 20.00 CMET</span></label>
-                    <input type="number" id="input-sell-usd" value="19000" step="1000">
-                </div>
-                <div class="control-group">
-                    <label title="Volume noise controls how much daily buy and sell flows fluctuate around their averages. Higher values make the market more irregular and trigger arbitrage more often.">Volume Noise: <span id="val-vol-mult">1.0</span></label>
-                    <input type="range" id="input-vol-mult" min="0" max="5" step="0.1" value="1.0">
-                </div>
-                <div class="control-group">
-                    <label title="Share of arbitrage capture that is reinvested into additional material. Higher reinvestment grows the reserve faster but reduces immediately available profit.">Reinvest-Quote: <span id="val-reinvest">100</span>%</label>
-                    <input type="range" id="input-reinvest" min="0" max="100" step="5" value="100">
-                </div>
-                <div class="control-group stockup-toggle">
-                    <label style="justify-content:flex-start; gap:10px;">
-                        <input type="checkbox" id="input-enable-stockup">
-                        <span title="Enables a separate primary-market reserve expansion process. Stock-up adds material to the CMR and issues new CMET independently from secondary-market arbitrage.">Stock-Up Mechanismus aktivieren</span>
-                    </label>
-                </div>
-                <div id="stockup-controls" class="hidden">
+                <div class="param-section param-protocol">
+                    <h3 title="Protocol parameters define how CMET responds to market dislocations. They control intervention logic, reserve growth, and treasury outcomes.">Protokoll Parameter</h3>
                     <div class="control-group">
-                        <label title="Defines how often a stock-up event occurs. Each event adds fresh material and mints new supply under the configured issuance rule.">Stock-Up Frequency (Tage):</label>
-                        <input type="number" id="input-stockup-frequency" value="30" step="1">
+                        <label title="Initial CMET pool reserve at launch. A larger pool usually means lower slippage and more price inertia.">Start-Reserve (CMET):</label>
+                        <input type="number" id="input-cmet" value="10000" step="1000">
                     </div>
                     <div class="control-group">
-                        <label title="Amount of Valyrium added to the CMR during each stock-up event. Larger stock-ups grow both reserve size and token supply faster.">Stock-Up Size (g Valyrium):</label>
-                        <input type="number" id="input-stockup-grams" value="500" step="50">
+                        <label title="Initial Valyrium reference price in USD per gram. This is the starting off-chain anchor for NAV and market comparisons.">Init. CM-Preis (USD/g):</label>
+                        <input type="number" id="input-price" value="950" step="10">
                     </div>
                     <div class="control-group">
-                        <label title="Optional issuance premium above NAV for stock-up events. A higher premium means fewer CMET are issued per gram added, improving reserve quality.">Stock-Up Premium on NAV: <span id="val-stockup-premium">0.0</span>%</label>
-                        <input type="range" id="input-stockup-premium" min="0" max="10" step="0.1" value="0.0">
+                        <label title="This is the trigger threshold for protocol intervention. If CMET deviates beyond this band from the reference price, mint or burn logic activates.">Intervention Band (ε): <span id="val-eps">0.5</span>%</label>
+                        <input type="range" id="input-eps" min="0.1" max="5.0" step="0.1" value="0.5">
+                    </div>
+                    <div class="control-group">
+                        <label title="After an intervention, the protocol steers the price back toward this tighter target band. A smaller target means deeper corrective action and usually more capture per event.">Target Band (ε_tgt): <span id="val-eps-tgt">0.05</span>%</label>
+                        <input type="range" id="input-eps-tgt" min="0.0" max="1.0" step="0.01" value="0.05">
+                    </div>
+                    <div class="control-group">
+                        <label title="Share of arbitrage capture that is reinvested into additional material. Higher reinvestment grows the reserve faster but reduces immediately available profit.">Reinvest-Quote: <span id="val-reinvest">100</span>%</label>
+                        <input type="range" id="input-reinvest" min="0" max="100" step="5" value="100">
                     </div>
                 </div>
-                <div class="control-group">
-                    <label title="Daily storage and insurance cost per gram of Valyrium held in reserve. These costs do not reduce the material balance directly, but must be covered by treasury profit.">Carry Costs (USD/g/Tag): <span id="val-carry">0.010</span> (<span id="val-carry-pa" style="font-weight:700;">0.38</span>% p.a.)</label>
-                    <input type="range" id="input-carry" min="0.001" max="0.1" step="0.001" value="0.01">
+
+                <div class="param-section param-optional">
+                    <div class="control-group stockup-toggle">
+                        <label style="justify-content:flex-start; gap:10px;">
+                            <input type="checkbox" id="input-enable-trading">
+                            <span title="Shows the optional trading flow inputs for external buy and sell pressure.">Handelsparameter anzeigen</span>
+                        </label>
+                    </div>
+                    <div id="trading-controls" class="hidden">
+                        <div class="control-group">
+                            <label title="Average daily external buy demand entering the pool in USD. The estimated CMET equivalent is shown next to it using the current initial price.">Avg. Daily Buys (USD): <span id="buy-cmet-equiv">≈ 52.63 CMET</span></label>
+                            <input type="number" id="input-buy-usd" value="50000" step="5000">
+                        </div>
+                        <div class="control-group">
+                            <label title="Average daily external sell pressure expressed in USD notional. The estimated CMET equivalent is shown next to it using the current initial price.">Avg. Daily Sells (USD): <span id="sell-cmet-equiv">≈ 20.00 CMET</span></label>
+                            <input type="number" id="input-sell-usd" value="19000" step="1000">
+                        </div>
+                        <div class="control-group">
+                            <label title="Volume noise controls how much daily buy and sell flows fluctuate around their averages. Higher values make the market more irregular and trigger arbitrage more often.">Volume Noise: <span id="val-vol-mult">1.0</span></label>
+                            <input type="range" id="input-vol-mult" min="0" max="5" step="0.1" value="1.0">
+                        </div>
+                    </div>
+
+                    <div class="control-group stockup-toggle">
+                        <label style="justify-content:flex-start; gap:10px;">
+                            <input type="checkbox" id="input-enable-carry">
+                            <span title="Shows the carry parameter block for storage and insurance assumptions.">Carry Parameter anzeigen</span>
+                        </label>
+                    </div>
+                    <div id="carry-controls" class="hidden">
+                        <div class="control-group">
+                            <label title="Daily storage and insurance cost per gram of Valyrium held in reserve. These costs do not reduce the material balance directly, but must be covered by treasury profit.">Carry Costs (USD/g/Tag): <span id="val-carry">0.010</span> (<span id="val-carry-pa" style="font-weight:700;">0.38</span>% p.a.)</label>
+                            <input type="range" id="input-carry" min="0.001" max="0.1" step="0.001" value="0.01">
+                        </div>
+                    </div>
+
+                    <div class="control-group stockup-toggle">
+                        <label style="justify-content:flex-start; gap:10px;">
+                            <input type="checkbox" id="input-enable-stockup">
+                            <span title="Enables a separate primary-market reserve expansion process. Stock-up adds material to the CMR and issues new CMET independently from secondary-market arbitrage.">Stock-Up Mechanismus aktivieren</span>
+                        </label>
+                    </div>
+                    <div id="stockup-controls" class="hidden">
+                        <div class="control-group">
+                            <label title="Defines how often a stock-up event occurs. Each event adds fresh material and mints new supply under the configured issuance rule.">Stock-Up Frequency (Tage):</label>
+                            <input type="number" id="input-stockup-frequency" value="30" step="1">
+                        </div>
+                        <div class="control-group">
+                            <label title="Amount of Valyrium added to the CMR during each stock-up event. Larger stock-ups grow both reserve size and token supply faster.">Stock-Up Size (g Valyrium):</label>
+                            <input type="number" id="input-stockup-grams" value="500" step="50">
+                        </div>
+                        <div class="control-group">
+                            <label title="Optional issuance premium above NAV for stock-up events. A higher premium means fewer CMET are issued per gram added, improving reserve quality.">Stock-Up Premium on NAV: <span id="val-stockup-premium">0.0</span>%</label>
+                            <input type="range" id="input-stockup-premium" min="0" max="10" step="0.1" value="0.0">
+                        </div>
+                    </div>
                 </div>
                 <button id="btn-run" class="btn-primary" style="margin-top:15px;">Simulation Starten</button>
             </div>
