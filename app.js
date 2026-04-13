@@ -161,6 +161,7 @@ function runSim() {
     const startInvestment = (initialCMET * initialPrice) * 2;
     let capturedPremium = 0;
     let capturedDiscount = 0;
+    let stockupRevenue = 0;
 
     const data = { labels: [], spotPrice: [], nav: [], poolPrice: [], spread: [], spreadPost: [], supply: [] };
 
@@ -201,9 +202,13 @@ function runSim() {
 
         // Optional stock-up mechanism independent of secondary-market arbitrage
         if (enableStockup && stockupFrequency > 0 && t > 0 && t % stockupFrequency === 0) {
+            const navBeforeStockup = totalCMET > 0 ? (reservePhysical * price / totalCMET) : price;
             const stockupValueUsd = stockupGrams * price;
-            const issuePrice = (reservePhysical * price / totalCMET) * (1 + stockupPremium);
+            const issuePrice = navBeforeStockup * (1 + stockupPremium);
             const issuedCMET = issuePrice > 0 ? stockupValueUsd / issuePrice : 0;
+            const navEquivalentTokens = navBeforeStockup > 0 ? stockupValueUsd / navBeforeStockup : 0;
+            const stockupRevenueUsd = Math.max((navEquivalentTokens - issuedCMET) * navBeforeStockup, 0);
+            stockupRevenue += stockupRevenueUsd;
             reservePhysical += stockupGrams;
             totalCMET += issuedCMET;
         }
@@ -273,11 +278,11 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue);
     drawSimCharts(data);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -325,11 +330,21 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     const profitRoi = startInvestment > 0 ? (netProfit / startInvestment) * 100 : 0;
     document.getElementById('kpi-profit-sub').innerText = `ROI: ${formatNumber(profitRoi)}% | Margin: ${formatNumber(capturedValue > 0 ? (netProfit/capturedValue)*100 : 0)}%`;
 
-    // Net Treasury Result (Profit - Carry Costs)
-    const treasuryResult = netProfit - totalCarryCosts;
+    // Stock-Up Revenue (only visible when enabled)
+    const stockupCard = document.getElementById('kpi-stockup-card');
+    stockupCard.classList.toggle('hidden', !enableStockup);
+    if (enableStockup) {
+        document.getElementById('kpi-stockup-revenue').innerText = formatCurrency(stockupRevenue, 0);
+        document.getElementById('kpi-stockup-sub').innerText = `Premium issuance income`;
+    }
+
+    // Net Treasury Result (Profit - Carry Costs + Stock-Up Revenue)
+    const treasuryResult = netProfit - totalCarryCosts + (enableStockup ? stockupRevenue : 0);
     document.getElementById('kpi-treasury').innerText = formatCurrency(treasuryResult, 0);
     const treasuryRoi = startInvestment > 0 ? (treasuryResult / startInvestment) * 100 : 0;
-    document.getElementById('kpi-treasury-sub').innerText = `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(totalCarryCosts, 0)}`;
+    document.getElementById('kpi-treasury-sub').innerText = enableStockup
+        ? `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(totalCarryCosts, 0)} | Stock-Up: ${formatCurrency(stockupRevenue, 0)}`
+        : `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(totalCarryCosts, 0)}`;
     
     // Style the treasury card based on result
     const treasuryCard = document.getElementById('kpi-treasury').parentElement;
