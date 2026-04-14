@@ -373,7 +373,7 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
 
         const incomeBase = netProfit + (enableStockup ? stockupRevenue : 0);
         const carryCapacity = (days > 0 && finalPhysical > 0) ? (incomeBase / finalPhysical / days) : 0;
-        document.getElementById('kpi-carry-capacity').innerText = `$${formatNumber(carryCapacity)}`;
+        document.getElementById('kpi-carry-capacity').innerText = `$${new Intl.NumberFormat('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(carryCapacity)}`;
         const carryCapacityPa = initialPrice > 0 ? (carryCapacity * 365 / initialPrice) * 100 : 0;
         document.getElementById('kpi-carry-capacity-sub').innerText = `≈ ${formatNumber(carryCapacityPa)}% p.a. affordable`;
     }
