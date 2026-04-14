@@ -1,5 +1,6 @@
 let chartPriceNav, chartSpread, chartSupply, chartLPComposition, chartSupplySplit;
-let chartHistoryNav, chartHistoryPrices, chartHistoryFlows, chartHistoryMix;
+let chartHistoryNav, chartHistoryPrices, chartHistoryFlows, chartHistoryMix, chartHistoryContribution;
+let historyChartMode = 'absolute';
 let currentTab = 'sim';
 
 const colors = {
@@ -55,6 +56,18 @@ function initDashboard() {
     document.getElementById('btn-new-seed')?.addEventListener('click', () => {
         document.getElementById('input-seed').value = Math.floor(Math.random() * 99999);
         runSim();
+    });
+    document.getElementById('btn-history-absolute')?.addEventListener('click', () => {
+        historyChartMode = 'absolute';
+        document.getElementById('btn-history-absolute').classList.add('active');
+        document.getElementById('btn-history-indexed').classList.remove('active');
+        if (historyState.summary.length) renderHistory();
+    });
+    document.getElementById('btn-history-indexed')?.addEventListener('click', () => {
+        historyChartMode = 'indexed';
+        document.getElementById('btn-history-indexed').classList.add('active');
+        document.getElementById('btn-history-absolute').classList.remove('active');
+        if (historyState.summary.length) renderHistory();
     });
     document.getElementById('input-enable-trading')?.addEventListener('change', (e) => {
         document.getElementById('trading-controls').classList.toggle('hidden', !e.target.checked);
@@ -646,23 +659,35 @@ function renderHistory() {
     document.getElementById('hist-total-return').innerText = `${formatNumber(totalReturn)}%`;
     document.getElementById('history-range').innerText = `${start.date.slice(0, 7)} bis ${end.date.slice(0, 7)}`;
     document.getElementById('history-start-value').innerText = formatMillions(start.reserveValuePre);
+    document.getElementById('history-mode-label').innerText = document.getElementById('input-history-use-sim')?.checked
+        ? 'Backtest + Tab 1 Overlay'
+        : 'Fixe CMR-Zusammensetzung';
 
     renderMixList(mix);
     drawHistoryNav(summary);
     drawHistoryPrices(prices, mix.slice(0, 5).map(item => item.material));
     drawHistoryDrawdown(summary.map(row => row.date), drawdownSeries);
     drawHistoryMix(mix);
+    drawHistoryContribution(prices, mix);
 }
 
 function drawHistoryNav(summary) {
     if (chartHistoryNav) chartHistoryNav.destroy();
+    const startNav = summary[0]?.navPre || 1;
+    const startReserve = summary[0]?.reserveValuePre || 1;
+    const navData = historyChartMode === 'indexed'
+        ? summary.map(row => (row.navPre / startNav) * 100)
+        : summary.map(row => row.navPre);
+    const reserveData = historyChartMode === 'indexed'
+        ? summary.map(row => (row.reserveValuePre / startReserve) * 100)
+        : summary.map(row => row.reserveValuePre);
     chartHistoryNav = new Chart(document.getElementById('chartHistoryNav').getContext('2d'), {
         type: 'line',
         data: {
             labels: summary.map(row => row.date),
             datasets: [
-                { label: 'NAV', data: summary.map(row => row.navPre), borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.12)', fill: false, borderWidth: 3, pointRadius: 0, tension: 0.2, yAxisID: 'y' },
-                { label: 'Reserve Value', data: summary.map(row => row.reserveValuePre), borderColor: colors.primary, backgroundColor: 'rgba(32, 58, 97, 0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: 'y1' }
+                { label: historyChartMode === 'indexed' ? 'NAV Index (100=start)' : 'NAV', data: navData, borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.12)', fill: false, borderWidth: 3, pointRadius: 0, tension: 0.2, yAxisID: 'y' },
+                { label: historyChartMode === 'indexed' ? 'CMR Index (100=start)' : 'Reserve Value', data: reserveData, borderColor: colors.primary, backgroundColor: 'rgba(32, 58, 97, 0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: historyChartMode === 'indexed' ? 'y' : 'y1' }
             ]
         },
         options: {
@@ -672,7 +697,7 @@ function drawHistoryNav(summary) {
             plugins: { legend: { position: 'top' } },
             scales: {
                 y: { position: 'left', grid: { color: 'rgba(0,0,0,0.05)' } },
-                y1: { position: 'right', grid: { drawOnChartArea: false } },
+                y1: { position: 'right', grid: { drawOnChartArea: false }, display: historyChartMode !== 'indexed' },
                 x: { grid: { display: false } }
             }
         }
@@ -729,6 +754,31 @@ function drawHistoryDrawdown(labels, drawdownSeries) {
                 x: { grid: { display: false } }
             }
         }
+    });
+}
+
+function drawHistoryContribution(prices, mix) {
+    if (chartHistoryContribution) chartHistoryContribution.destroy();
+    const materials = mix.map(item => item.material);
+    const contributions = materials.map(material => {
+        const start = prices[0]?.[material] || 1;
+        const end = prices[prices.length - 1]?.[material] || 1;
+        const weight = mix.find(m => m.material === material)?.weight || 0;
+        return { material, value: ((end / start) - 1) * weight * 100 };
+    }).sort((a, b) => b.value - a.value);
+
+    chartHistoryContribution = new Chart(document.getElementById('chartHistoryContribution').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: contributions.map(c => c.material),
+            datasets: [{
+                label: 'Weighted Contribution (%)',
+                data: contributions.map(c => c.value),
+                backgroundColor: contributions.map(c => c.value >= 0 ? colors.green : colors.red),
+                borderWidth: 0
+            }]
+        },
+        options: baseBarOptions(false)
     });
 }
 

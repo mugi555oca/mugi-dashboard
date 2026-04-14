@@ -164,6 +164,19 @@
 
             <div class="controls-section hidden" id="history-controls">
                 <h3>Historischer Backtest</h3>
+                <div class="control-group">
+                    <label>Chart Modus</label>
+                    <div style="display:flex; gap:8px;">
+                        <button id="btn-history-absolute" class="tab-btn active" style="flex:1;">Absolute</button>
+                        <button id="btn-history-indexed" class="tab-btn" style="flex:1;">Indexed</button>
+                    </div>
+                </div>
+                <div class="control-group stockup-toggle">
+                    <label style="justify-content:flex-start; gap:10px;">
+                        <input type="checkbox" id="input-history-use-sim">
+                        <span>Apply Tab 1 assumptions</span>
+                    </label>
+                </div>
                 <div class="info-card">
                     <div class="info-label">Zeitraum</div>
                     <div class="info-value" id="history-range">2015-11 bis 2025-10</div>
@@ -174,7 +187,7 @@
                 </div>
                 <div class="info-card">
                     <div class="info-label">Backtest Modus</div>
-                    <div class="info-value">Fixe CMR-Zusammensetzung</div>
+                    <div class="info-value" id="history-mode-label">Fixe CMR-Zusammensetzung</div>
                 </div>
                 <div class="info-card small-text">
                     Historische Entwicklung eines fixen Materialkorbs über ~10–15 Jahre. Fokus: CMR-Wert, NAV, Drawdowns und Materialtreiber.
@@ -366,6 +379,10 @@
                     <div class="chart-container">
                         <h3>Fixed CMR Mix</h3>
                         <canvas id="chartHistoryMix"></canvas>
+                    </div>
+                    <div class="chart-container span-2">
+                        <h3>Contribution by Material</h3>
+                        <canvas id="chartHistoryContribution"></canvas>
                     </div>
                 </section>
 
