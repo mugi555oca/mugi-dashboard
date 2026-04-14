@@ -630,16 +630,26 @@ async function loadHistoryData() {
 function computeHistoryOverlay(summary) {
     const carryEnabled = document.getElementById('input-enable-carry')?.checked;
     const enableStockup = document.getElementById('input-enable-stockup')?.checked;
+    const lpEnabled = document.getElementById('input-enable-lp')?.checked;
+    const stableYieldEnabled = document.getElementById('input-enable-stable-yield')?.checked;
+    const tradingEnabled = document.getElementById('input-enable-trading')?.checked;
     const reinvestRate = (parseFloat(document.getElementById('input-reinvest')?.value || '0') / 100) || 0;
     const carryCostPerGram = carryEnabled ? parseFloat(document.getElementById('input-carry')?.value || '0') : 0;
     const stockupFrequency = parseFloat((document.getElementById('input-stockup-frequency')?.value || '0').replace(/,/g, '')) || 0;
     const stockupGrams = parseFloat((document.getElementById('input-stockup-grams')?.value || '0').replace(/,/g, '')) || 0;
     const stockupPremium = (parseFloat(document.getElementById('input-stockup-premium')?.value || '0') / 100) || 0;
     const initialPrice = parseFloat((document.getElementById('input-price')?.value || '950').replace(/,/g, '')) || 950;
+    const eps = (parseFloat(document.getElementById('input-eps')?.value || '0') / 100) || 0;
+    const lpFeeRate = lpEnabled ? ((parseFloat(document.getElementById('input-lp-fee')?.value || '0') / 100) || 0) : 0;
+    const stableYieldRate = stableYieldEnabled ? ((parseFloat(document.getElementById('input-stable-yield')?.value || '0') / 100) || 0) : 0;
+    const buyUsd = tradingEnabled ? (parseFloat((document.getElementById('input-buy-usd')?.value || '0').replace(/,/g, '')) || 0) : 0;
+    const sellUsd = tradingEnabled ? (parseFloat((document.getElementById('input-sell-usd')?.value || '0').replace(/,/g, '')) || 0) : 0;
 
     let overlayReserve = summary[0].reserveValuePre;
     let overlaySupply = summary[0].supplyPost || 10000000;
     let elapsedDays = 0;
+    let poolUSDT = initialPrice * 10000;
+    let poolCMET = 10000;
 
     return summary.map((row, idx) => {
         if (idx === 0) {
@@ -649,8 +659,34 @@ function computeHistoryOverlay(summary) {
         const marketRatio = prevBase > 0 ? (row.reserveValuePre / prevBase) : 1;
         overlayReserve *= marketRatio;
 
-        const reinvest = (row.feeValue || 0) * reinvestRate;
+        const spotPrice = row.navPre;
+        let poolPrice = poolCMET > 0 ? poolUSDT / poolCMET : spotPrice;
+        const spread = spotPrice > 0 ? ((poolPrice / spotPrice) - 1) : 0;
+
+        // Simplified historical arbitrage/intervention overlay
+        let overlayArbProfit = 0;
+        if (Math.abs(spread) > eps && spotPrice > 0) {
+            const interventionIntensity = Math.abs(spread) - eps;
+            const syntheticVolume = Math.max(buyUsd + sellUsd, overlayReserve * 0.005);
+            overlayArbProfit = syntheticVolume * interventionIntensity * 0.15;
+            const reserveAdj = spread > 0 ? overlayArbProfit * (1 + reinvestRate) : overlayArbProfit * reinvestRate;
+            overlayReserve += reserveAdj;
+        }
+
+        const reinvest = overlayArbProfit * reinvestRate;
         overlayReserve += reinvest;
+
+        // Approximate LP fees on historical overlay
+        const externalVolume = buyUsd + sellUsd;
+        const internalVolume = Math.abs(spread) > eps ? externalVolume * 0.35 : 0;
+        const lpFees = lpEnabled ? ((externalVolume + internalVolume) * lpFeeRate) : 0;
+        overlayReserve += lpFees;
+
+        // Stablecoin yield on synthetic LP USD side
+        if (stableYieldEnabled) {
+            const monthlyYieldIncome = poolUSDT * (stableYieldRate / 12);
+            overlayReserve += monthlyYieldIncome;
+        }
 
         if (carryEnabled) {
             const reserveGramEq = overlayReserve / initialPrice;
@@ -667,6 +703,10 @@ function computeHistoryOverlay(summary) {
             overlaySupply += issued;
             elapsedDays = 0;
         }
+
+        // Soft synthetic pool drift for overlay-only charting basis
+        poolUSDT += buyUsd * (1 - lpFeeRate);
+        poolCMET += sellUsd / Math.max(initialPrice, 1);
 
         return {
             ...row,
