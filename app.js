@@ -72,6 +72,9 @@ function initDashboard() {
         document.getElementById('btn-history-absolute').classList.remove('active');
         if (historyState.summary.length) renderHistory();
     });
+    document.getElementById('input-history-use-sim')?.addEventListener('change', () => {
+        if (historyState.summary.length) renderHistory();
+    });
     document.getElementById('input-enable-trading')?.addEventListener('change', (e) => {
         document.getElementById('trading-controls').classList.toggle('hidden', !e.target.checked);
     });
@@ -624,20 +627,73 @@ async function loadHistoryData() {
     if (currentTab === 'history') renderHistory();
 }
 
+function computeHistoryOverlay(summary) {
+    const carryEnabled = document.getElementById('input-enable-carry')?.checked;
+    const enableStockup = document.getElementById('input-enable-stockup')?.checked;
+    const reinvestRate = (parseFloat(document.getElementById('input-reinvest')?.value || '0') / 100) || 0;
+    const carryCostPerGram = carryEnabled ? parseFloat(document.getElementById('input-carry')?.value || '0') : 0;
+    const stockupFrequency = parseFloat((document.getElementById('input-stockup-frequency')?.value || '0').replace(/,/g, '')) || 0;
+    const stockupGrams = parseFloat((document.getElementById('input-stockup-grams')?.value || '0').replace(/,/g, '')) || 0;
+    const stockupPremium = (parseFloat(document.getElementById('input-stockup-premium')?.value || '0') / 100) || 0;
+    const initialPrice = parseFloat((document.getElementById('input-price')?.value || '950').replace(/,/g, '')) || 950;
+
+    let overlayReserve = summary[0].reserveValuePre;
+    let overlaySupply = summary[0].supplyPost || 10000000;
+    let elapsedDays = 0;
+
+    return summary.map((row, idx) => {
+        if (idx === 0) {
+            return { ...row, reserveValuePre: overlayReserve, navPre: overlayReserve / overlaySupply, supplyPost: overlaySupply };
+        }
+        const prevBase = summary[idx - 1].reserveValuePre || 1;
+        const marketRatio = prevBase > 0 ? (row.reserveValuePre / prevBase) : 1;
+        overlayReserve *= marketRatio;
+
+        const reinvest = (row.feeValue || 0) * reinvestRate;
+        overlayReserve += reinvest;
+
+        if (carryEnabled) {
+            const reserveGramEq = overlayReserve / initialPrice;
+            overlayReserve -= reserveGramEq * carryCostPerGram * 30;
+        }
+
+        elapsedDays += 30;
+        if (enableStockup && stockupFrequency > 0 && elapsedDays >= stockupFrequency) {
+            const navBefore = overlaySupply > 0 ? overlayReserve / overlaySupply : 1;
+            const stockupValue = stockupGrams * initialPrice;
+            const issuePrice = navBefore * (1 + stockupPremium);
+            const issued = issuePrice > 0 ? stockupValue / issuePrice : 0;
+            overlayReserve += stockupValue;
+            overlaySupply += issued;
+            elapsedDays = 0;
+        }
+
+        return {
+            ...row,
+            reserveValuePre: overlayReserve,
+            navPre: overlaySupply > 0 ? overlayReserve / overlaySupply : 0,
+            supplyPost: overlaySupply
+        };
+    });
+}
+
 function renderHistory() {
     const summary = historyState.summary;
     const prices = historyState.prices;
     const mix = [...historyState.mix].sort((a, b) => b.weight - a.weight);
     if (!summary.length || !prices.length || !mix.length) return;
 
-    const start = summary[0];
-    const end = summary[summary.length - 1];
-    const months = Math.max(summary.length - 1, 1);
+    const useOverlay = document.getElementById('input-history-use-sim')?.checked;
+    const activeSummary = useOverlay ? computeHistoryOverlay(summary) : summary;
+
+    const start = activeSummary[0];
+    const end = activeSummary[activeSummary.length - 1];
+    const months = Math.max(activeSummary.length - 1, 1);
     const years = months / 12;
     const totalReturn = ((end.reserveValuePre / start.reserveValuePre) - 1) * 100;
     const cagr = years > 0 ? ((end.reserveValuePre / start.reserveValuePre) ** (1 / years) - 1) * 100 : 0;
 
-    const navSeries = summary.map(row => row.navPre);
+    const navSeries = activeSummary.map(row => row.navPre);
     const monthlyReturns = navSeries.slice(1).map((v, i) => (v / navSeries[i]) - 1);
     const avgMonthly = monthlyReturns.reduce((a, b) => a + b, 0) / Math.max(monthlyReturns.length, 1);
     const volMonthly = Math.sqrt(monthlyReturns.reduce((sum, r) => sum + ((r - avgMonthly) ** 2), 0) / Math.max(monthlyReturns.length, 1));
@@ -662,19 +718,19 @@ function renderHistory() {
     document.getElementById('hist-total-return').innerText = `${formatNumber(totalReturn)}%`;
     document.getElementById('history-range').innerText = `${start.date.slice(0, 7)} bis ${end.date.slice(0, 7)}`;
     document.getElementById('history-start-value').innerText = formatMillions(start.reserveValuePre);
-    document.getElementById('history-mode-label').innerText = document.getElementById('input-history-use-sim')?.checked
+    document.getElementById('history-mode-label').innerText = useOverlay
         ? 'Backtest + Tab 1 Overlay'
         : 'Fixe CMR-Zusammensetzung';
 
     renderMixList(mix);
-    drawHistoryNav(summary);
+    drawHistoryNav(activeSummary, useOverlay ? summary : null);
     drawHistoryPrices(prices, mix.slice(0, 5).map(item => item.material));
-    drawHistoryDrawdown(summary.map(row => row.date), drawdownSeries);
+    drawHistoryDrawdown(activeSummary.map(row => row.date), drawdownSeries);
     drawHistoryMix(mix);
     drawHistoryContribution(prices, mix);
 }
 
-function drawHistoryNav(summary) {
+function drawHistoryNav(summary, baseSummary = null) {
     if (chartHistoryNav) chartHistoryNav.destroy();
     const startNav = summary[0]?.navPre || 1;
     const startReserve = summary[0]?.reserveValuePre || 1;
@@ -684,14 +740,32 @@ function drawHistoryNav(summary) {
     const reserveData = historyChartMode === 'indexed'
         ? summary.map(row => (row.reserveValuePre / startReserve) * 100)
         : summary.map(row => row.reserveValuePre);
+    const datasets = [
+        { label: historyChartMode === 'indexed' ? 'NAV Index (100=start)' : 'NAV', data: navData, borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.12)', fill: false, borderWidth: 3, pointRadius: 0, tension: 0.2, yAxisID: 'y' },
+        { label: historyChartMode === 'indexed' ? 'CMR Index (100=start)' : 'Reserve Value', data: reserveData, borderColor: colors.primary, backgroundColor: 'rgba(32, 58, 97, 0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: historyChartMode === 'indexed' ? 'y' : 'y1' }
+    ];
+    if (baseSummary) {
+        const baseStartNav = baseSummary[0]?.navPre || 1;
+        const baseData = historyChartMode === 'indexed'
+            ? baseSummary.map(row => (row.navPre / baseStartNav) * 100)
+            : baseSummary.map(row => row.navPre);
+        datasets.push({
+            label: historyChartMode === 'indexed' ? 'Base NAV Index' : 'Base NAV',
+            data: baseData,
+            borderColor: colors.taupe,
+            borderDash: [5, 5],
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.2,
+            yAxisID: 'y'
+        });
+    }
     chartHistoryNav = new Chart(document.getElementById('chartHistoryNav').getContext('2d'), {
         type: 'line',
         data: {
             labels: summary.map(row => row.date),
-            datasets: [
-                { label: historyChartMode === 'indexed' ? 'NAV Index (100=start)' : 'NAV', data: navData, borderColor: colors.copper1, backgroundColor: 'rgba(197, 140, 109, 0.12)', fill: false, borderWidth: 3, pointRadius: 0, tension: 0.2, yAxisID: 'y' },
-                { label: historyChartMode === 'indexed' ? 'CMR Index (100=start)' : 'Reserve Value', data: reserveData, borderColor: colors.primary, backgroundColor: 'rgba(32, 58, 97, 0.08)', fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: historyChartMode === 'indexed' ? 'y' : 'y1' }
-            ]
+            datasets
         },
         options: {
             responsive: true,
