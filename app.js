@@ -301,11 +301,11 @@ function runSim() {
         data.supply.push(totalCMET);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue, days);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled);
     drawSimCharts(data);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue, days) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -341,15 +341,18 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     document.getElementById('kpi-supply-start').innerText = `Start: ${formatNumber(initialCMET)}`;
     setPct('kpi-supply-pct', finalSupply, initialCMET);
 
-    // Carry Costs
-    document.getElementById('kpi-carry').innerText = formatCurrency(totalCarryCosts, 0);
+    // Carry Costs / Carry Capacity only when carry is enabled
+    document.getElementById('kpi-carry-card').classList.toggle('hidden', !carryEnabled);
+    document.getElementById('kpi-carry-capacity-card').classList.toggle('hidden', !carryEnabled);
+    if (carryEnabled) {
+        document.getElementById('kpi-carry').innerText = formatCurrency(totalCarryCosts, 0);
 
-    // Carry Capacity
-    const incomeBase = netProfit + (enableStockup ? stockupRevenue : 0);
-    const carryCapacity = (days > 0 && finalPhysical > 0) ? (incomeBase / finalPhysical / days) : 0;
-    document.getElementById('kpi-carry-capacity').innerText = `$${formatNumber(carryCapacity)}`;
-    const carryCapacityPa = finalSpot > 0 ? (carryCapacity * 365 / finalSpot) * 100 : 0;
-    document.getElementById('kpi-carry-capacity-sub').innerText = `≈ ${formatNumber(carryCapacityPa)}% p.a. affordable`;
+        const incomeBase = netProfit + (enableStockup ? stockupRevenue : 0);
+        const carryCapacity = (days > 0 && finalPhysical > 0) ? (incomeBase / finalPhysical / days) : 0;
+        document.getElementById('kpi-carry-capacity').innerText = `$${formatNumber(carryCapacity)}`;
+        const carryCapacityPa = finalSpot > 0 ? (carryCapacity * 365 / finalSpot) * 100 : 0;
+        document.getElementById('kpi-carry-capacity-sub').innerText = `≈ ${formatNumber(carryCapacityPa)}% p.a. affordable`;
+    }
 
     // Arbitrage Capture (Gross)
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue, 0);
@@ -369,12 +372,12 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     }
 
     // Net Treasury Result (Profit - Carry Costs + Stock-Up Revenue)
-    const treasuryResult = netProfit - totalCarryCosts + (enableStockup ? stockupRevenue : 0);
+    const treasuryResult = netProfit - (carryEnabled ? totalCarryCosts : 0) + (enableStockup ? stockupRevenue : 0);
     document.getElementById('kpi-treasury').innerText = formatCurrency(treasuryResult, 0);
     const treasuryRoi = startInvestment > 0 ? (treasuryResult / startInvestment) * 100 : 0;
     document.getElementById('kpi-treasury-sub').innerText = enableStockup
-        ? `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(totalCarryCosts, 0)} | Stock-Up: ${formatCurrency(stockupRevenue, 0)}`
-        : `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(totalCarryCosts, 0)}`;
+        ? `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)} | Stock-Up: ${formatCurrency(stockupRevenue, 0)}`
+        : `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)}`;
     
     // Style the treasury card based on result
     const treasuryCard = document.getElementById('kpi-treasury').parentElement;
