@@ -184,6 +184,7 @@ function runSim() {
     let reservePhysical = initialCMET;
     let reserveUSD = reservePhysical * initialPrice;
     let totalCarryCosts = 0;
+    let totalReserveGramDays = 0;
     let capturedValue = 0;
     let netProfit = 0;
     const startInvestment = (initialCMET * initialPrice) * 2;
@@ -200,11 +201,12 @@ function runSim() {
             // Use deterministic RNG for normality approximation
             let z = (rng() + rng() + rng() + rng() + rng() + rng() - 3) / 1.5;
             price = price * (1 + drift + vol * z);
-            
-            // Calculate Carry Costs (pure USD liability, NOT reducing material)
-            let dailyCarry = reservePhysical * carryCostPerGram;
-            totalCarryCosts += dailyCarry;
         }
+
+        // Track exact reserve gram-days and calculate carry costs on that basis
+        totalReserveGramDays += reservePhysical;
+        let dailyCarry = reservePhysical * carryCostPerGram;
+        totalCarryCosts += dailyCarry;
 
         // External market flow: separated demand/supply with configurable bias and noise
         const buyNoise = Math.max(0, 1 + ((rng() - 0.5) * 2 * volMult));
@@ -325,11 +327,11 @@ function runSim() {
         data.poolUSDT.push(poolUSDT);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, poolCMET, poolUSDT, initialCMET, initialCMET * initialPrice);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, reservePhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, poolCMET, poolUSDT, initialCMET, initialCMET * initialPrice);
     drawSimCharts(data, lpEnabled);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, finalPoolCMET, finalPoolUSDT, initialPoolCMET, initialPoolUSDT) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, finalPhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, finalPoolCMET, finalPoolUSDT, initialPoolCMET, initialPoolUSDT) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -372,7 +374,7 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
         document.getElementById('kpi-carry').innerText = formatCurrency(totalCarryCosts, 0);
 
         const incomeBase = netProfit + (enableStockup ? stockupRevenue : 0);
-        const carryCapacity = (days > 0 && finalPhysical > 0) ? (incomeBase / finalPhysical / days) : 0;
+        const carryCapacity = totalReserveGramDays > 0 ? (incomeBase / totalReserveGramDays) : 0;
         document.getElementById('kpi-carry-capacity').innerText = `$${new Intl.NumberFormat('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(carryCapacity)}`;
         const carryCapacityPa = initialPrice > 0 ? (carryCapacity * 365 / initialPrice) * 100 : 0;
         document.getElementById('kpi-carry-capacity-sub').innerText = `≈ ${formatNumber(carryCapacityPa)}% p.a. affordable`;
