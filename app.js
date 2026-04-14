@@ -1,4 +1,4 @@
-let chartPriceNav, chartSpread, chartSupply, chartLPComposition;
+let chartPriceNav, chartSpread, chartSupply, chartLPComposition, chartSupplySplit;
 let chartHistoryNav, chartHistoryPrices, chartHistoryFlows, chartHistoryMix;
 let currentTab = 'sim';
 
@@ -191,6 +191,7 @@ function runSim() {
     let capturedPremium = 0;
     let capturedDiscount = 0;
     let stockupRevenue = 0;
+    let stockupIssuedCMET = 0;
     let lpFeesExternal = 0;
     let lpFeesInternal = 0;
 
@@ -250,6 +251,7 @@ function runSim() {
             const navEquivalentTokens = navBeforeStockup > 0 ? stockupValueUsd / navBeforeStockup : 0;
             const stockupRevenueUsd = Math.max((navEquivalentTokens - issuedCMET) * navBeforeStockup, 0);
             stockupRevenue += stockupRevenueUsd;
+            stockupIssuedCMET += issuedCMET;
             reservePhysical += stockupGrams;
             totalCMET += issuedCMET;
         }
@@ -327,11 +329,11 @@ function runSim() {
         data.poolUSDT.push(poolUSDT);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, reservePhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, poolCMET, poolUSDT, initialCMET, initialCMET * initialPrice);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, reservePhysical, netProfit, enableStockup, stockupRevenue, stockupIssuedCMET, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, poolCMET, poolUSDT, initialCMET, initialCMET * initialPrice);
     drawSimCharts(data, lpEnabled);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, finalPhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, finalPoolCMET, finalPoolUSDT, initialPoolCMET, initialPoolUSDT) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, finalPhysical, netProfit, enableStockup, stockupRevenue, stockupIssuedCMET, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, finalPoolCMET, finalPoolUSDT, initialPoolCMET, initialPoolUSDT) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -366,6 +368,35 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     document.getElementById('kpi-supply').innerText = formatNumber(finalSupply);
     document.getElementById('kpi-supply-start').innerText = `Start: ${formatNumber(initialCMET)}`;
     setPct('kpi-supply-pct', finalSupply, initialCMET);
+    const cmetInLP = finalPoolCMET;
+    const cmetFromStockups = stockupIssuedCMET;
+    const cmetAtTraders = Math.max(finalSupply - cmetInLP - cmetFromStockups, 0);
+    document.getElementById('kpi-supply-lp').innerText = formatNumber(cmetInLP);
+    document.getElementById('kpi-supply-traders').innerText = formatNumber(cmetAtTraders);
+    document.getElementById('kpi-supply-stockup').innerText = formatNumber(cmetFromStockups);
+
+    const pieWrap = document.getElementById('kpi-supply-pie-wrap');
+    pieWrap.classList.toggle('hidden', !enableStockup);
+    if (chartSupplySplit) chartSupplySplit.destroy();
+    if (enableStockup) {
+        chartSupplySplit = new Chart(document.getElementById('chartSupplySplit').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['CMET in LP', 'CMET bei Tradern', 'CMET durch Stock-Ups'],
+                datasets: [{
+                    data: [cmetInLP, cmetAtTraders, cmetFromStockups],
+                    backgroundColor: [colors.primary, colors.copper1, colors.green],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                cutout: '58%'
+            }
+        });
+    }
 
     // Carry Costs / Carry Capacity only when carry is enabled
     document.getElementById('kpi-carry-card').classList.toggle('hidden', !carryEnabled);

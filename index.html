@@ -224,9 +224,15 @@
                             <h4 style="margin:0;" title="Total CMET token supply outstanding after mint, burn, and stock-up issuance. This determines how reserve value is distributed per token.">CMET im Umlauf</h4>
                         </div>
                         <div class="kpi-val" id="kpi-supply">0</div>
-                        <div class="kpi-sub">
+                        <div class="kpi-sub" style="margin-bottom:4px;">
                             <span id="kpi-supply-start">Start: 0</span> | 
                             <span id="kpi-supply-pct" style="font-weight:700;">0.00%</span>
+                        </div>
+                        <div class="kpi-sub" style="font-size:0.75rem; border-top:1px solid rgba(0,0,0,0.05); padding-top:4px;">
+                            LP: <span id="kpi-supply-lp">0</span> | Traders: <span id="kpi-supply-traders">0</span> | Stock-Up: <span id="kpi-supply-stockup">0</span>
+                        </div>
+                        <div id="kpi-supply-pie-wrap" class="hidden" style="margin-top:10px; height:140px;">
+                            <canvas id="chartSupplySplit"></canvas>
                         </div>
                     </div>
                     <div class="kpi-card hidden" id="kpi-carry-card">
