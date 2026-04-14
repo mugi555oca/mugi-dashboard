@@ -374,26 +374,27 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
         const incomeBase = netProfit + (enableStockup ? stockupRevenue : 0);
         const carryCapacity = (days > 0 && finalPhysical > 0) ? (incomeBase / finalPhysical / days) : 0;
         document.getElementById('kpi-carry-capacity').innerText = `$${formatNumber(carryCapacity)}`;
-        const carryCapacityPa = finalSpot > 0 ? (carryCapacity * 365 / finalSpot) * 100 : 0;
+        const carryCapacityPa = initialPrice > 0 ? (carryCapacity * 365 / initialPrice) * 100 : 0;
         document.getElementById('kpi-carry-capacity-sub').innerText = `≈ ${formatNumber(carryCapacityPa)}% p.a. affordable`;
     }
 
     // LP Fees / IL only when LP is enabled
     const lpFeesTotal = lpFeesExternal + lpFeesInternal;
     document.getElementById('kpi-fees-total-card').classList.toggle('hidden', !lpEnabled);
-    document.getElementById('kpi-fees-external-card').classList.toggle('hidden', !lpEnabled);
-    document.getElementById('kpi-fees-internal-card').classList.toggle('hidden', !lpEnabled);
     document.getElementById('kpi-il-card').classList.toggle('hidden', !lpEnabled);
     document.getElementById('chart-lp-card').classList.toggle('hidden', !lpEnabled);
+    let il = 0;
+    let hodlValue = 0;
+    let lpValue = 0;
     if (lpEnabled) {
         document.getElementById('kpi-fees-total').innerText = formatCurrency(lpFeesTotal, 0);
-        document.getElementById('kpi-fees-external').innerText = formatCurrency(lpFeesExternal, 0);
-        document.getElementById('kpi-fees-internal').innerText = formatCurrency(lpFeesInternal, 0);
-        const hodlValue = finalPoolCMET * finalSpot + initialPoolUSDT;
-        const lpValue = finalPoolCMET * finalSpot + finalPoolUSDT;
-        const il = lpValue - hodlValue;
+        document.getElementById('kpi-fees-total-sub').innerText = `Ext: ${formatCurrency(lpFeesExternal, 0)} | Int: ${formatCurrency(lpFeesInternal, 0)}`;
+        hodlValue = initialPoolCMET * finalSpot + initialPoolUSDT;
+        lpValue = finalPoolCMET * finalSpot + finalPoolUSDT;
+        il = lpValue - hodlValue;
         document.getElementById('kpi-il').innerText = formatCurrency(il, 0);
-        document.getElementById('kpi-il-sub').innerText = `vs HODL baseline`;
+        document.getElementById('kpi-il').style.color = il >= 0 ? colors.green : colors.red;
+        document.getElementById('kpi-il-sub').innerText = `HODL: ${formatCurrency(hodlValue, 0)} | LP: ${formatCurrency(lpValue, 0)}`;
     }
 
     // Arbitrage Capture (Gross)
@@ -417,14 +418,11 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     const treasuryResult = netProfit - (carryEnabled ? totalCarryCosts : 0) + (enableStockup ? stockupRevenue : 0) + (lpEnabled ? lpFeesTotal : 0);
     document.getElementById('kpi-treasury').innerText = formatCurrency(treasuryResult, 0);
     const treasuryRoi = startInvestment > 0 ? (treasuryResult / startInvestment) * 100 : 0;
-    if (enableStockup || lpEnabled) {
-        const parts = [`Result ROI: ${formatNumber(treasuryRoi)}%`, `Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)}`];
-        if (enableStockup) parts.push(`Stock-Up: ${formatCurrency(stockupRevenue, 0)}`);
-        if (lpEnabled) parts.push(`LP Fees: ${formatCurrency(lpFeesTotal, 0)}`);
-        document.getElementById('kpi-treasury-sub').innerText = parts.join(' | ');
-    } else {
-        document.getElementById('kpi-treasury-sub').innerText = `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)}`;
-    }
+    const treasuryParts = [`ROI: ${formatNumber(treasuryRoi)}%`, `Arb: +${formatCurrency(netProfit, 0)}`];
+    if (enableStockup) treasuryParts.push(`Stock-Up: +${formatCurrency(stockupRevenue, 0)}`);
+    if (lpEnabled) treasuryParts.push(`LP Fees: +${formatCurrency(lpFeesTotal, 0)}`);
+    if (carryEnabled) treasuryParts.push(`Carry: -${formatCurrency(totalCarryCosts, 0)}`);
+    document.getElementById('kpi-treasury-sub').innerText = treasuryParts.join(' | ');
     
     // Style the treasury card based on result
     const treasuryCard = document.getElementById('kpi-treasury').parentElement;
