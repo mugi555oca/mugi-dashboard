@@ -163,9 +163,9 @@
             </div>
 
             <div class="controls-section hidden" id="history-controls">
-                <h3>Historischer Backtest</h3>
+                <h3 title="Historical backtest of a fixed CMR basket over roughly 10–15 years. This tab shows how reserve value, NAV, risk, and material contributions evolved through real market cycles.">Historischer Backtest</h3>
                 <div class="control-group">
-                    <label>Chart Modus</label>
+                    <label title="Switches the main backtest chart between absolute values and indexed performance. Indexed mode normalizes the start to 100 so different series are easier to compare.">Chart Modus</label>
                     <div style="display:flex; gap:8px;">
                         <button id="btn-history-absolute" class="tab-btn active" style="flex:1;">Absolute</button>
                         <button id="btn-history-indexed" class="tab-btn" style="flex:1;">Indexed</button>
@@ -174,7 +174,7 @@
                 <div class="control-group stockup-toggle">
                     <label style="justify-content:flex-start; gap:10px;">
                         <input type="checkbox" id="input-history-use-sim">
-                        <span>Apply Tab 1 assumptions</span>
+                        <span title="Applies selected Tab 1 mechanics like reinvest, carry, and stock-up rules onto the historical reserve path. This creates a protocol-style overlay on top of the raw historical CMR series.">Apply Tab 1 assumptions</span>
                     </label>
                 </div>
                 <div class="info-card">
@@ -332,32 +332,32 @@
             <section id="tab-history" class="tab-panel">
                 <section class="kpi-grid">
                     <div class="kpi-card">
-                        <h4>End-NAV</h4>
+                        <h4 title="Final net asset value per token at the end of the historical backtest period. It shows how much reserve value each token would have represented at the end.">End-NAV</h4>
                         <div class="kpi-val" id="hist-nav">–</div>
                         <div class="kpi-sub" id="hist-nav-sub">Start: –</div>
                     </div>
                     <div class="kpi-card">
-                        <h4>CMR End Value</h4>
+                        <h4 title="Final total reserve value of the fixed CMR basket at the end of the backtest period. This is the ending dollar value of the reserve base.">CMR End Value</h4>
                         <div class="kpi-val" id="hist-reserve">–</div>
                         <div class="kpi-sub" id="hist-reserve-sub">Start: –</div>
                     </div>
                     <div class="kpi-card">
-                        <h4>CAGR</h4>
+                        <h4 title="Compound annual growth rate of the reserve value over the whole backtest period. It shows the smoothed yearly growth rate from start to finish.">CAGR</h4>
                         <div class="kpi-val" id="hist-cagr">–</div>
                         <div class="kpi-sub" id="hist-cagr-sub">Annualized return</div>
                     </div>
                     <div class="kpi-card">
-                        <h4>Max Drawdown</h4>
+                        <h4 title="Largest peak-to-trough decline during the full historical period. It shows the worst historical loss from a previous high before recovery.">Max Drawdown</h4>
                         <div class="kpi-val" id="hist-drawdown">–</div>
                         <div class="kpi-sub" id="hist-drawdown-sub">Peak to trough</div>
                     </div>
                     <div class="kpi-card">
-                        <h4>Volatility</h4>
+                        <h4 title="Annualized volatility of the historical NAV series. It measures how unstable or smooth the reserve path was over time.">Volatility</h4>
                         <div class="kpi-val" id="hist-volatility">–</div>
                         <div class="kpi-sub" id="hist-volatility-sub">Annualized</div>
                     </div>
                     <div class="kpi-card accent-card">
-                        <h4>Total Return</h4>
+                        <h4 title="Total percentage return of the CMR basket from the first point of the backtest to the last. It is the full-period growth without annual smoothing.">Total Return</h4>
                         <div class="kpi-val" id="hist-total-return">–</div>
                         <div class="kpi-sub" id="hist-total-return-sub">CMR indexed growth</div>
                     </div>
@@ -365,29 +365,29 @@
 
                 <section class="charts-grid">
                     <div class="chart-container span-2">
-                        <h3>Historical CMR / NAV Backtest</h3>
+                        <h3 title="Main historical backtest chart for reserve value and NAV. In indexed mode both series start at 100 to make relative performance easier to compare.">Historical CMR / NAV Backtest</h3>
                         <canvas id="chartHistoryNav"></canvas>
                     </div>
                     <div class="chart-container span-2">
-                        <h3>Historical Material Prices (Top 5 by Weight)</h3>
+                        <h3 title="Historical price paths of the five largest materials in the fixed CMR basket. This shows which core materials drove major performance swings over time.">Historical Material Prices (Top 5 by Weight)</h3>
                         <canvas id="chartHistoryPrices"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3>Historical Drawdown</h3>
+                        <h3 title="Shows how far the backtest fell below its previous peak at each point in time. It answers how painful the worst historical declines were before recovery.">Historical Drawdown</h3>
                         <canvas id="chartHistoryFlows"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3>Fixed CMR Mix</h3>
+                        <h3 title="Static allocation of the CMR basket used for the historical backtest. It shows the weight of each material in the fixed reserve mix.">Fixed CMR Mix</h3>
                         <canvas id="chartHistoryMix"></canvas>
                     </div>
                     <div class="chart-container span-2">
-                        <h3>Contribution by Material</h3>
+                        <h3 title="Estimated weighted contribution of each material to the overall backtest performance. It highlights which materials added the most and which detracted.">Contribution by Material</h3>
                         <canvas id="chartHistoryContribution"></canvas>
                     </div>
                 </section>
 
                 <section class="chart-container" style="margin-top:20px;">
-                    <h3>Material Mix</h3>
+                    <h3 title="Detailed list of the materials in the fixed reserve basket, including their weights and industrial role. This is the composition behind the historical backtest.">Material Mix</h3>
                     <div id="mix-list" class="mix-list"></div>
                 </section>
             </section>
