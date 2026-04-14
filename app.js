@@ -36,7 +36,7 @@ function initDashboard() {
     Chart.defaults.font.family = "'Montserrat', sans-serif";
     Chart.defaults.color = colors.taupe;
 
-    const ids = ['days', 'vol', 'drift', 'eps', 'eps-tgt', 'reinvest', 'carry', 'vol-mult', 'stockup-premium', 'lp-fee'];
+    const ids = ['days', 'vol', 'drift', 'eps', 'eps-tgt', 'reinvest', 'carry', 'vol-mult', 'stockup-premium', 'lp-fee', 'stable-yield'];
     ids.forEach(id => {
         const el = document.getElementById(`input-${id}`);
         if (el) {
@@ -64,6 +64,9 @@ function initDashboard() {
     });
     document.getElementById('input-enable-carry')?.addEventListener('change', (e) => {
         document.getElementById('carry-controls').classList.toggle('hidden', !e.target.checked);
+    });
+    document.getElementById('input-enable-stable-yield')?.addEventListener('change', (e) => {
+        document.getElementById('stable-yield-controls').classList.toggle('hidden', !e.target.checked);
     });
     document.getElementById('input-enable-stockup')?.addEventListener('change', (e) => {
         document.getElementById('stockup-controls').classList.toggle('hidden', !e.target.checked);
@@ -165,7 +168,9 @@ function runSim() {
     const tradingEnabled = document.getElementById('input-enable-trading')?.checked;
     const lpEnabled = document.getElementById('input-enable-lp')?.checked;
     const carryEnabled = document.getElementById('input-enable-carry')?.checked;
+    const stableYieldEnabled = document.getElementById('input-enable-stable-yield')?.checked;
     const lpFeeRate = lpEnabled ? (parseFloat(document.getElementById('input-lp-fee').value) / 100) : 0;
+    const stableYieldRate = stableYieldEnabled ? (parseFloat(document.getElementById('input-stable-yield').value) / 100) : 0;
     const avgBuyUSD = tradingEnabled ? getVal('input-buy-usd') : 0;
     const avgSellUSD = tradingEnabled ? getVal('input-sell-usd') : 0;
     const avgSellCMET = initialPrice > 0 ? avgSellUSD / initialPrice : 0;
@@ -194,6 +199,7 @@ function runSim() {
     let stockupIssuedCMET = 0;
     let lpFeesExternal = 0;
     let lpFeesInternal = 0;
+    let stableYieldIncome = 0;
 
     const data = { labels: [], spotPrice: [], nav: [], poolPrice: [], spread: [], spreadPost: [], supply: [], poolCMET: [], poolUSDT: [] };
 
@@ -327,13 +333,14 @@ function runSim() {
         data.supply.push(totalCMET);
         data.poolCMET.push(poolCMET);
         data.poolUSDT.push(poolUSDT);
+        stableYieldIncome += poolUSDT * (stableYieldRate / 365);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, reservePhysical, netProfit, enableStockup, stockupRevenue, stockupIssuedCMET, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, poolCMET, poolUSDT, initialCMET, initialCMET * initialPrice);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, reservePhysical, netProfit, enableStockup, stockupRevenue, stockupIssuedCMET, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, stableYieldEnabled, stableYieldIncome, poolCMET, poolUSDT, initialCMET, initialCMET * initialPrice);
     drawSimCharts(data, lpEnabled);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, finalPhysical, netProfit, enableStockup, stockupRevenue, stockupIssuedCMET, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, finalPoolCMET, finalPoolUSDT, initialPoolCMET, initialPoolUSDT) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, totalReserveGramDays, finalPhysical, netProfit, enableStockup, stockupRevenue, stockupIssuedCMET, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, stableYieldEnabled, stableYieldIncome, finalPoolCMET, finalPoolUSDT, initialPoolCMET, initialPoolUSDT) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -418,6 +425,14 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     const profitRoi = startInvestment > 0 ? (netProfit / startInvestment) * 100 : 0;
     document.getElementById('kpi-profit-sub').innerText = `ROI: ${formatNumber(profitRoi)}% | Margin: ${formatNumber(capturedValue > 0 ? (netProfit/capturedValue)*100 : 0)}%`;
 
+    // Stablecoin Yield Revenue
+    const stableYieldCard = document.getElementById('kpi-stable-yield-card');
+    stableYieldCard.classList.toggle('hidden', !stableYieldEnabled);
+    if (stableYieldEnabled) {
+        document.getElementById('kpi-stable-yield-income').innerText = formatCurrency(stableYieldIncome, 0);
+        document.getElementById('kpi-stable-yield-sub').innerText = `Yield on LP USD side`;
+    }
+
     // Stock-Up Revenue (only visible when enabled)
     const stockupCard = document.getElementById('kpi-stockup-card');
     stockupCard.classList.toggle('hidden', !enableStockup);
@@ -426,13 +441,14 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
         document.getElementById('kpi-stockup-sub').innerText = `Premium issuance income`;
     }
 
-    // Net Treasury Result (Profit - Carry Costs + Stock-Up Revenue)
-    const treasuryResult = netProfit - (carryEnabled ? totalCarryCosts : 0) + (enableStockup ? stockupRevenue : 0) + (lpEnabled ? lpFeesTotal : 0);
+    // Net Treasury Result (Profit - Carry Costs + Stock-Up Revenue + Stable Yield)
+    const treasuryResult = netProfit - (carryEnabled ? totalCarryCosts : 0) + (enableStockup ? stockupRevenue : 0) + (lpEnabled ? lpFeesTotal : 0) + (stableYieldEnabled ? stableYieldIncome : 0);
     document.getElementById('kpi-treasury').innerText = formatCurrency(treasuryResult, 0);
     const treasuryRoi = startInvestment > 0 ? (treasuryResult / startInvestment) * 100 : 0;
     const treasuryParts = [`ROI: ${formatNumber(treasuryRoi)}%`, `Arb: +${formatCurrency(netProfit, 0)}`];
     if (enableStockup) treasuryParts.push(`Stock-Up: +${formatCurrency(stockupRevenue, 0)}`);
     if (lpEnabled) treasuryParts.push(`LP Fees: +${formatCurrency(lpFeesTotal, 0)}`);
+    if (stableYieldEnabled) treasuryParts.push(`Stable Yield: +${formatCurrency(stableYieldIncome, 0)}`);
     if (carryEnabled) treasuryParts.push(`Carry: -${formatCurrency(totalCarryCosts, 0)}`);
     document.getElementById('kpi-treasury-sub').innerText = treasuryParts.join(' | ');
     

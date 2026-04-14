@@ -127,6 +127,19 @@
 
                     <div class="control-group stockup-toggle">
                         <label style="justify-content:flex-start; gap:10px;">
+                            <input type="checkbox" id="input-enable-stable-yield">
+                            <span title="Shows the stablecoin yield block. Assumes the full USD side of the LP earns treasury yield because the stablecoin is protocol-owned.">Stablecoin Yield anzeigen</span>
+                        </label>
+                    </div>
+                    <div id="stable-yield-controls" class="hidden">
+                        <div class="control-group">
+                            <label title="Annualized yield earned on the USD side of the LP. This is treated as additional treasury income.">Stablecoin Yield: <span id="val-stable-yield">5.0</span>% p.a.</label>
+                            <input type="range" id="input-stable-yield" min="0" max="20" step="0.1" value="5.0">
+                        </div>
+                    </div>
+
+                    <div class="control-group stockup-toggle">
+                        <label style="justify-content:flex-start; gap:10px;">
                             <input type="checkbox" id="input-enable-stockup">
                             <span title="Enables a separate primary-market reserve expansion process. Stock-up adds material to the CMR and issues new CMET independently from secondary-market arbitrage.">Stock-Up Mechanismus aktivieren</span>
                         </label>
@@ -261,6 +274,11 @@
                         <h4 title="Impermanent loss of the LP versus a passive HODL of the initial CMET and USDT balances.">Impermanent Loss</h4>
                         <div class="kpi-val" id="kpi-il">$0</div>
                         <div class="kpi-sub" id="kpi-il-sub">HODL: $0 | LP: $0</div>
+                    </div>
+                    <div class="kpi-card hidden" id="kpi-stable-yield-card">
+                        <h4 title="Treasury income earned from the USD side of the LP when it is assumed to be a protocol-owned stablecoin.">Stablecoin Yield Income</h4>
+                        <div class="kpi-val" id="kpi-stable-yield-income">$0</div>
+                        <div class="kpi-sub" id="kpi-stable-yield-sub">Yield on LP USD side</div>
                     </div>
                     <div class="kpi-card accent-card hidden" id="kpi-stockup-card">
                         <h4 title="Additional issuance income created by issuing new CMET above NAV during stock-up events.">Stock-Up Revenue</h4>
