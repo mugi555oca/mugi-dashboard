@@ -1,4 +1,4 @@
-let chartPriceNav, chartSpread, chartSupply;
+let chartPriceNav, chartSpread, chartSupply, chartLPComposition;
 let chartHistoryNav, chartHistoryPrices, chartHistoryFlows, chartHistoryMix;
 let currentTab = 'sim';
 
@@ -36,7 +36,7 @@ function initDashboard() {
     Chart.defaults.font.family = "'Montserrat', sans-serif";
     Chart.defaults.color = colors.taupe;
 
-    const ids = ['days', 'vol', 'drift', 'eps', 'eps-tgt', 'reinvest', 'carry', 'vol-mult', 'stockup-premium'];
+    const ids = ['days', 'vol', 'drift', 'eps', 'eps-tgt', 'reinvest', 'carry', 'vol-mult', 'stockup-premium', 'lp-fee'];
     ids.forEach(id => {
         const el = document.getElementById(`input-${id}`);
         if (el) {
@@ -58,6 +58,9 @@ function initDashboard() {
     });
     document.getElementById('input-enable-trading')?.addEventListener('change', (e) => {
         document.getElementById('trading-controls').classList.toggle('hidden', !e.target.checked);
+    });
+    document.getElementById('input-enable-lp')?.addEventListener('change', (e) => {
+        document.getElementById('lp-controls').classList.toggle('hidden', !e.target.checked);
     });
     document.getElementById('input-enable-carry')?.addEventListener('change', (e) => {
         document.getElementById('carry-controls').classList.toggle('hidden', !e.target.checked);
@@ -160,7 +163,9 @@ function runSim() {
     const eps = parseFloat(document.getElementById('input-eps').value) / 100;
     const epsTgt = parseFloat(document.getElementById('input-eps-tgt').value) / 100;
     const tradingEnabled = document.getElementById('input-enable-trading')?.checked;
+    const lpEnabled = document.getElementById('input-enable-lp')?.checked;
     const carryEnabled = document.getElementById('input-enable-carry')?.checked;
+    const lpFeeRate = lpEnabled ? (parseFloat(document.getElementById('input-lp-fee').value) / 100) : 0;
     const avgBuyUSD = tradingEnabled ? getVal('input-buy-usd') : 0;
     const avgSellUSD = tradingEnabled ? getVal('input-sell-usd') : 0;
     const avgSellCMET = initialPrice > 0 ? avgSellUSD / initialPrice : 0;
@@ -185,8 +190,10 @@ function runSim() {
     let capturedPremium = 0;
     let capturedDiscount = 0;
     let stockupRevenue = 0;
+    let lpFeesExternal = 0;
+    let lpFeesInternal = 0;
 
-    const data = { labels: [], spotPrice: [], nav: [], poolPrice: [], spread: [], spreadPost: [], supply: [] };
+    const data = { labels: [], spotPrice: [], nav: [], poolPrice: [], spread: [], spreadPost: [], supply: [], poolCMET: [], poolUSDT: [] };
 
     for (let t = 0; t <= days; t++) {
         if (t > 0) {
@@ -208,19 +215,28 @@ function runSim() {
 
         // First external sells into pool
         if (extSellCMET > 0) {
-            const newPoolCMET = poolCMET + extSellCMET;
-            const newPoolUSDT = k / newPoolCMET;
+            const effectiveSellCMET = extSellCMET * (1 - lpFeeRate);
+            const feeCmet = extSellCMET - effectiveSellCMET;
+            const newPoolCMET = poolCMET + effectiveSellCMET + feeCmet;
+            const newPoolUSDT = k / (poolCMET + effectiveSellCMET);
+            const usdtOut = poolUSDT - newPoolUSDT;
+            const feeUsd = usdtOut > 0 ? usdtOut * (lpFeeRate / Math.max(1e-9, (1 - lpFeeRate))) : 0;
+            lpFeesExternal += feeUsd;
             poolCMET = newPoolCMET;
             poolUSDT = newPoolUSDT;
-            k = poolCMET * poolUSDT;
+            k = (poolCMET - feeCmet) * poolUSDT;
         }
 
         // Then external buys from pool
         if (extBuyUSD > 0) {
-            const newPoolUSDT = poolUSDT + extBuyUSD;
-            const newPoolCMET = k / newPoolUSDT;
+            const effectiveBuyUSD = extBuyUSD * (1 - lpFeeRate);
+            const feeUsd = extBuyUSD - effectiveBuyUSD;
+            const newPoolUSDT = poolUSDT + effectiveBuyUSD + feeUsd;
+            const newPoolCMET = k / (poolUSDT + effectiveBuyUSD);
+            lpFeesExternal += feeUsd;
             poolCMET = newPoolCMET;
             poolUSDT = newPoolUSDT;
+            k = poolCMET * (poolUSDT - feeUsd);
         }
 
         // Optional stock-up mechanism independent of secondary-market arbitrage
@@ -245,9 +261,12 @@ function runSim() {
             let targetCMET = Math.sqrt(k / targetPrice);
             let dCMET = targetCMET - poolCMET;
             if (dCMET > 0) {
-                let dUSDT = poolUSDT - (k / targetCMET);
+                let grossDUSDT = poolUSDT - (k / targetCMET);
+                const feeUsd = grossDUSDT * lpFeeRate;
+                let dUSDT = grossDUSDT - feeUsd;
+                lpFeesInternal += feeUsd;
                 poolCMET += dCMET;
-                poolUSDT -= dUSDT;
+                poolUSDT -= grossDUSDT;
                 totalCMET += dCMET;
 
                 const baseBackingUsd = dCMET * price;
@@ -267,15 +286,18 @@ function runSim() {
             let targetCMET = Math.sqrt(k / targetPrice);
             let dCMET = poolCMET - targetCMET;
             if (dCMET > 0) {
-                let dUSDT = (k / targetCMET) - poolUSDT;
-                const materialToSell = dUSDT / price;
+                let netDUSDT = (k / targetCMET) - poolUSDT;
+                const grossDUSDT = netDUSDT / Math.max(1e-9, (1 - lpFeeRate));
+                const feeUsd = grossDUSDT - netDUSDT;
+                const materialToSell = grossDUSDT / price;
                 if (reservePhysical >= materialToSell) {
                     reservePhysical -= materialToSell;
+                    lpFeesInternal += feeUsd;
                     poolCMET -= dCMET;
-                    poolUSDT += dUSDT;
+                    poolUSDT += netDUSDT;
                     totalCMET -= dCMET;
 
-                    const grossCapture = (dCMET * price) - dUSDT;
+                    const grossCapture = (dCMET * price) - grossDUSDT;
                     const reinvestUsd = Math.max(grossCapture, 0) * reinvestRate;
                     const boughtPhysical = reinvestUsd / price;
                     reservePhysical += boughtPhysical;
@@ -299,13 +321,15 @@ function runSim() {
         data.spread.push(preInterventionSpread);
         data.spreadPost.push(postInterventionSpread);
         data.supply.push(totalCMET);
+        data.poolCMET.push(poolCMET);
+        data.poolUSDT.push(poolUSDT);
     }
 
-    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled);
-    drawSimCharts(data);
+    updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, reservePhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, poolCMET, poolUSDT, initialCMET, initialCMET * initialPrice);
+    drawSimCharts(data, lpEnabled);
 }
 
-function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled) {
+function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initialCMET, capturedPremium, capturedDiscount, startInvestment, totalCarryCosts, finalPhysical, netProfit, enableStockup, stockupRevenue, days, carryEnabled, lpEnabled, lpFeesExternal, lpFeesInternal, finalPoolCMET, finalPoolUSDT, initialPoolCMET, initialPoolUSDT) {
     const finalNav = data.nav[data.nav.length - 1];
     const finalSupply = data.supply[data.supply.length - 1];
     const finalSpot = data.spotPrice[data.spotPrice.length - 1];
@@ -354,6 +378,24 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
         document.getElementById('kpi-carry-capacity-sub').innerText = `≈ ${formatNumber(carryCapacityPa)}% p.a. affordable`;
     }
 
+    // LP Fees / IL only when LP is enabled
+    const lpFeesTotal = lpFeesExternal + lpFeesInternal;
+    document.getElementById('kpi-fees-total-card').classList.toggle('hidden', !lpEnabled);
+    document.getElementById('kpi-fees-external-card').classList.toggle('hidden', !lpEnabled);
+    document.getElementById('kpi-fees-internal-card').classList.toggle('hidden', !lpEnabled);
+    document.getElementById('kpi-il-card').classList.toggle('hidden', !lpEnabled);
+    document.getElementById('chart-lp-card').classList.toggle('hidden', !lpEnabled);
+    if (lpEnabled) {
+        document.getElementById('kpi-fees-total').innerText = formatCurrency(lpFeesTotal, 0);
+        document.getElementById('kpi-fees-external').innerText = formatCurrency(lpFeesExternal, 0);
+        document.getElementById('kpi-fees-internal').innerText = formatCurrency(lpFeesInternal, 0);
+        const hodlValue = finalPoolCMET * finalSpot + initialPoolUSDT;
+        const lpValue = finalPoolCMET * finalSpot + finalPoolUSDT;
+        const il = lpValue - hodlValue;
+        document.getElementById('kpi-il').innerText = formatCurrency(il, 0);
+        document.getElementById('kpi-il-sub').innerText = `vs HODL baseline`;
+    }
+
     // Arbitrage Capture (Gross)
     document.getElementById('kpi-captured').innerText = formatCurrency(capturedValue, 0);
     document.getElementById('kpi-captured-sub').innerText = `Prem: ${formatCurrency(capturedPremium)} | Disc: ${formatCurrency(capturedDiscount)}`;
@@ -372,12 +414,17 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     }
 
     // Net Treasury Result (Profit - Carry Costs + Stock-Up Revenue)
-    const treasuryResult = netProfit - (carryEnabled ? totalCarryCosts : 0) + (enableStockup ? stockupRevenue : 0);
+    const treasuryResult = netProfit - (carryEnabled ? totalCarryCosts : 0) + (enableStockup ? stockupRevenue : 0) + (lpEnabled ? lpFeesTotal : 0);
     document.getElementById('kpi-treasury').innerText = formatCurrency(treasuryResult, 0);
     const treasuryRoi = startInvestment > 0 ? (treasuryResult / startInvestment) * 100 : 0;
-    document.getElementById('kpi-treasury-sub').innerText = enableStockup
-        ? `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)} | Stock-Up: ${formatCurrency(stockupRevenue, 0)}`
-        : `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)}`;
+    if (enableStockup || lpEnabled) {
+        const parts = [`Result ROI: ${formatNumber(treasuryRoi)}%`, `Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)}`];
+        if (enableStockup) parts.push(`Stock-Up: ${formatCurrency(stockupRevenue, 0)}`);
+        if (lpEnabled) parts.push(`LP Fees: ${formatCurrency(lpFeesTotal, 0)}`);
+        document.getElementById('kpi-treasury-sub').innerText = parts.join(' | ');
+    } else {
+        document.getElementById('kpi-treasury-sub').innerText = `Result ROI: ${formatNumber(treasuryRoi)}% | Carry: ${formatCurrency(carryEnabled ? totalCarryCosts : 0, 0)}`;
+    }
     
     // Style the treasury card based on result
     const treasuryCard = document.getElementById('kpi-treasury').parentElement;
@@ -390,10 +437,11 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     }
 }
 
-function drawSimCharts(data) {
+function drawSimCharts(data, lpEnabled = false) {
     if (chartPriceNav) chartPriceNav.destroy();
     if (chartSpread) chartSpread.destroy();
     if (chartSupply) chartSupply.destroy();
+    if (chartLPComposition) chartLPComposition.destroy();
 
     const eps = parseFloat(document.getElementById('input-eps').value) || 0;
 
@@ -468,6 +516,30 @@ function drawSimCharts(data) {
         },
         options: baseLineOptions(false)
     });
+
+    if (lpEnabled) {
+        chartLPComposition = new Chart(document.getElementById('chartLPComposition').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    { label: 'Pool CMET', data: data.poolCMET, borderColor: colors.primary, backgroundColor: 'rgba(32, 58, 97, 0.08)', borderWidth: 2, fill: false, pointRadius: 0, tension: 0.1, yAxisID: 'y' },
+                    { label: 'Pool USDT', data: data.poolUSDT, borderColor: colors.green, backgroundColor: 'rgba(76, 175, 80, 0.08)', borderWidth: 2, fill: false, pointRadius: 0, tension: 0.1, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: { position: 'left', grid: { color: 'rgba(0,0,0,0.05)' } },
+                    y1: { position: 'right', grid: { drawOnChartArea: false } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
 }
 
 async function loadHistoryData() {
