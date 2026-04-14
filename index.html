@@ -169,15 +169,15 @@
                     <div class="info-value" id="history-range">2015-11 bis 2025-10</div>
                 </div>
                 <div class="info-card">
-                    <div class="info-label">Reserve-Startwert</div>
+                    <div class="info-label">Startwert CMR</div>
                     <div class="info-value" id="history-start-value">–</div>
                 </div>
                 <div class="info-card">
-                    <div class="info-label">Top-Preislinien</div>
-                    <div class="info-value">Copper, Lithium, Cobalt, Neodymium, Thorium</div>
+                    <div class="info-label">Backtest Modus</div>
+                    <div class="info-value">Fixe CMR-Zusammensetzung</div>
                 </div>
                 <div class="info-card small-text">
-                    Historischer Replay eines fixen CMR-Mix. Fokus: NAV, Reservewert, Mint/Burn und Fees.
+                    Historische Entwicklung eines fixen Materialkorbs über ~10–15 Jahre. Fokus: CMR-Wert, NAV, Drawdowns und Materialtreiber.
                 </div>
             </div>
         </aside>
@@ -324,43 +324,53 @@
                         <div class="kpi-sub" id="hist-nav-sub">Start: –</div>
                     </div>
                     <div class="kpi-card">
-                        <h4>Reserve Value</h4>
+                        <h4>CMR End Value</h4>
                         <div class="kpi-val" id="hist-reserve">–</div>
                         <div class="kpi-sub" id="hist-reserve-sub">Start: –</div>
                     </div>
                     <div class="kpi-card">
-                        <h4>CMET Supply</h4>
-                        <div class="kpi-val" id="hist-supply">–</div>
-                        <div class="kpi-sub" id="hist-supply-sub">Netto-Veränderung</div>
+                        <h4>CAGR</h4>
+                        <div class="kpi-val" id="hist-cagr">–</div>
+                        <div class="kpi-sub" id="hist-cagr-sub">Annualized return</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h4>Max Drawdown</h4>
+                        <div class="kpi-val" id="hist-drawdown">–</div>
+                        <div class="kpi-sub" id="hist-drawdown-sub">Peak to trough</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h4>Volatility</h4>
+                        <div class="kpi-val" id="hist-volatility">–</div>
+                        <div class="kpi-sub" id="hist-volatility-sub">Annualized</div>
                     </div>
                     <div class="kpi-card accent-card">
-                        <h4>Kumulierte Fees</h4>
-                        <div class="kpi-val" id="hist-fees">–</div>
-                        <div class="kpi-sub" id="hist-fees-sub">Mint/Burn Value Capture</div>
+                        <h4>Total Return</h4>
+                        <div class="kpi-val" id="hist-total-return">–</div>
+                        <div class="kpi-sub" id="hist-total-return-sub">CMR indexed growth</div>
                     </div>
                 </section>
 
                 <section class="charts-grid">
                     <div class="chart-container span-2">
-                        <h3>Historische PAT-Performance: NAV vs. Reservewert</h3>
+                        <h3>Historical CMR / NAV Backtest</h3>
                         <canvas id="chartHistoryNav"></canvas>
                     </div>
                     <div class="chart-container span-2">
-                        <h3>Historische Materialpreise (Top 5 nach Gewicht)</h3>
+                        <h3>Historical Material Prices (Top 5 by Weight)</h3>
                         <canvas id="chartHistoryPrices"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3>Mint / Burn / Fees</h3>
+                        <h3>Historical Drawdown</h3>
                         <canvas id="chartHistoryFlows"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3>Fixer CMR-Mix</h3>
+                        <h3>Fixed CMR Mix</h3>
                         <canvas id="chartHistoryMix"></canvas>
                     </div>
                 </section>
 
                 <section class="chart-container" style="margin-top:20px;">
-                    <h3>Materialmix</h3>
+                    <h3>Material Mix</h3>
                     <div id="mix-list" class="mix-list"></div>
                 </section>
             </section>

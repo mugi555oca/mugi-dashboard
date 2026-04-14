@@ -616,26 +616,41 @@ function renderHistory() {
 
     const start = summary[0];
     const end = summary[summary.length - 1];
-    const totalFees = summary.reduce((sum, row) => sum + (row.feeValue || 0), 0);
-    const totalMinted = summary.reduce((sum, row) => sum + (row.minted || 0), 0);
-    const totalBurned = summary.reduce((sum, row) => sum + (row.burned || 0), 0);
-    const netSupplyDelta = (end.supplyPost || 0) - (start.supplyPost || 0);
+    const months = Math.max(summary.length - 1, 1);
+    const years = months / 12;
+    const totalReturn = ((end.reserveValuePre / start.reserveValuePre) - 1) * 100;
+    const cagr = years > 0 ? ((end.reserveValuePre / start.reserveValuePre) ** (1 / years) - 1) * 100 : 0;
+
+    const navSeries = summary.map(row => row.navPre);
+    const monthlyReturns = navSeries.slice(1).map((v, i) => (v / navSeries[i]) - 1);
+    const avgMonthly = monthlyReturns.reduce((a, b) => a + b, 0) / Math.max(monthlyReturns.length, 1);
+    const volMonthly = Math.sqrt(monthlyReturns.reduce((sum, r) => sum + ((r - avgMonthly) ** 2), 0) / Math.max(monthlyReturns.length, 1));
+    const volAnnual = volMonthly * Math.sqrt(12) * 100;
+
+    let peak = navSeries[0] || 1;
+    let maxDrawdown = 0;
+    const drawdownSeries = navSeries.map(v => {
+        peak = Math.max(peak, v);
+        const dd = peak > 0 ? ((v / peak) - 1) * 100 : 0;
+        maxDrawdown = Math.min(maxDrawdown, dd);
+        return dd;
+    });
 
     document.getElementById('hist-nav').innerText = formatCurrency(end.navPre);
     document.getElementById('hist-nav-sub').innerText = `Start: ${formatCurrency(start.navPre)}`;
     document.getElementById('hist-reserve').innerText = formatMillions(end.reserveValuePre);
     document.getElementById('hist-reserve-sub').innerText = `Start: ${formatMillions(start.reserveValuePre)}`;
-    document.getElementById('hist-supply').innerText = formatNumber(end.supplyPost);
-    document.getElementById('hist-supply-sub').innerText = `Netto: ${netSupplyDelta >= 0 ? '+' : ''}${formatNumber(netSupplyDelta)}`;
-    document.getElementById('hist-fees').innerText = formatCurrency(totalFees);
-    document.getElementById('hist-fees-sub').innerText = `Minted: ${formatNumber(totalMinted)} | Burned: ${formatNumber(totalBurned)}`;
+    document.getElementById('hist-cagr').innerText = `${formatNumber(cagr)}%`;
+    document.getElementById('hist-drawdown').innerText = `${formatNumber(maxDrawdown)}%`;
+    document.getElementById('hist-volatility').innerText = `${formatNumber(volAnnual)}%`;
+    document.getElementById('hist-total-return').innerText = `${formatNumber(totalReturn)}%`;
     document.getElementById('history-range').innerText = `${start.date.slice(0, 7)} bis ${end.date.slice(0, 7)}`;
     document.getElementById('history-start-value').innerText = formatMillions(start.reserveValuePre);
 
     renderMixList(mix);
     drawHistoryNav(summary);
     drawHistoryPrices(prices, mix.slice(0, 5).map(item => item.material));
-    drawHistoryFlows(summary);
+    drawHistoryDrawdown(summary.map(row => row.date), drawdownSeries);
     drawHistoryMix(mix);
 }
 
@@ -685,16 +700,23 @@ function drawHistoryPrices(prices, topMaterials) {
     });
 }
 
-function drawHistoryFlows(summary) {
+function drawHistoryDrawdown(labels, drawdownSeries) {
     if (chartHistoryFlows) chartHistoryFlows.destroy();
     chartHistoryFlows = new Chart(document.getElementById('chartHistoryFlows').getContext('2d'), {
-        type: 'bar',
+        type: 'line',
         data: {
-            labels: summary.map(row => row.date),
+            labels,
             datasets: [
-                { label: 'Minted', data: summary.map(row => row.minted), backgroundColor: colors.green, stack: 'flow' },
-                { label: 'Burned', data: summary.map(row => row.burned), backgroundColor: colors.red, stack: 'flow' },
-                { label: 'Fees (USD)', data: summary.map(row => row.feeValue), type: 'line', borderColor: colors.copper1, backgroundColor: colors.copper1, yAxisID: 'y1', pointRadius: 0, tension: 0.2 }
+                {
+                    label: 'Drawdown (%)',
+                    data: drawdownSeries,
+                    borderColor: colors.red,
+                    backgroundColor: 'rgba(217, 83, 79, 0.15)',
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.2
+                }
             ]
         },
         options: {
@@ -703,9 +725,8 @@ function drawHistoryFlows(summary) {
             interaction: { mode: 'index', intersect: false },
             plugins: { legend: { position: 'top' } },
             scales: {
-                y: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                y1: { position: 'right', grid: { drawOnChartArea: false } },
-                x: { stacked: true, grid: { display: false } }
+                y: { grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
             }
         }
     });
