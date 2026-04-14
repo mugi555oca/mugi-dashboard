@@ -57,6 +57,9 @@ function initDashboard() {
         document.getElementById('input-seed').value = Math.floor(Math.random() * 99999);
         runSim();
     });
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
     document.getElementById('btn-history-absolute')?.addEventListener('click', () => {
         historyChartMode = 'absolute';
         document.getElementById('btn-history-absolute').classList.add('active');
