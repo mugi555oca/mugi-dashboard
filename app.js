@@ -375,28 +375,7 @@ function updateSimDashboard(data, initialPrice, capturedValue, reserveUSD, initi
     document.getElementById('kpi-supply-traders').innerText = formatNumber(cmetAtTraders);
     document.getElementById('kpi-supply-stockup').innerText = formatNumber(cmetFromStockups);
 
-    const pieWrap = document.getElementById('kpi-supply-pie-wrap');
-    pieWrap.classList.toggle('hidden', !enableStockup);
-    if (chartSupplySplit) chartSupplySplit.destroy();
-    if (enableStockup) {
-        chartSupplySplit = new Chart(document.getElementById('chartSupplySplit').getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: ['CMET in LP', 'CMET bei Tradern', 'CMET durch Stock-Ups'],
-                datasets: [{
-                    data: [cmetInLP, cmetAtTraders, cmetFromStockups],
-                    backgroundColor: [colors.primary, colors.copper1, colors.green],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
-                cutout: '58%'
-            }
-        });
-    }
+    document.getElementById('chart-supply-split-card').classList.toggle('hidden', !enableStockup);
 
     // Carry Costs / Carry Capacity only when carry is enabled
     document.getElementById('kpi-carry-card').classList.toggle('hidden', !carryEnabled);
@@ -473,6 +452,7 @@ function drawSimCharts(data, lpEnabled = false) {
     if (chartSpread) chartSpread.destroy();
     if (chartSupply) chartSupply.destroy();
     if (chartLPComposition) chartLPComposition.destroy();
+    if (chartSupplySplit) chartSupplySplit.destroy();
 
     const eps = parseFloat(document.getElementById('input-eps').value) || 0;
 
@@ -568,6 +548,31 @@ function drawSimCharts(data, lpEnabled = false) {
                     y1: { position: 'right', grid: { drawOnChartArea: false } },
                     x: { grid: { display: false } }
                 }
+            }
+        });
+    }
+
+    const supplySplitCard = document.getElementById('chart-supply-split-card');
+    if (supplySplitCard && !supplySplitCard.classList.contains('hidden')) {
+        const finalSupply = data.supply[data.supply.length - 1] || 0;
+        const finalPoolCMET = data.poolCMET[data.poolCMET.length - 1] || 0;
+        const stockupCmet = parseFloat((document.getElementById('kpi-supply-stockup')?.innerText || '0').replace(/,/g, '')) || 0;
+        const traderCmet = Math.max(finalSupply - finalPoolCMET - stockupCmet, 0);
+        chartSupplySplit = new Chart(document.getElementById('chartSupplySplit').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['CMET in LP', 'CMET bei Tradern', 'CMET durch Stock-Ups'],
+                datasets: [{
+                    data: [finalPoolCMET, traderCmet, stockupCmet],
+                    backgroundColor: [colors.primary, colors.copper1, colors.green],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                cutout: '58%'
             }
         });
     }

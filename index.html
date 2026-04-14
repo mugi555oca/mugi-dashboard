@@ -231,9 +231,6 @@
                         <div class="kpi-sub" style="font-size:0.75rem; border-top:1px solid rgba(0,0,0,0.05); padding-top:4px;">
                             LP: <span id="kpi-supply-lp">0</span> | Traders: <span id="kpi-supply-traders">0</span> | Stock-Up: <span id="kpi-supply-stockup">0</span>
                         </div>
-                        <div id="kpi-supply-pie-wrap" class="hidden" style="margin-top:10px; height:140px;">
-                            <canvas id="chartSupplySplit"></canvas>
-                        </div>
                     </div>
                     <div class="kpi-card hidden" id="kpi-carry-card">
                         <h4 title="Total accumulated storage and insurance costs over the full simulation period. These costs are treasury liabilities and reduce net economic outcome.">Carry Costs (Total)</h4>
@@ -293,6 +290,10 @@
                     <div class="chart-container hidden" id="chart-lp-card">
                         <h3 title="Shows the changing composition of the liquidity pool over time. It helps track how external trading and protocol interventions shift CMET and USDT balances.">Liquidity Pool Composition</h3>
                         <canvas id="chartLPComposition"></canvas>
+                    </div>
+                    <div class="chart-container hidden" id="chart-supply-split-card">
+                        <h3 title="Shows how total CMET supply is split between the liquidity pool, traders, and stock-up issued tokens.">CMET Supply Split</h3>
+                        <canvas id="chartSupplySplit"></canvas>
                     </div>
                 </section>
             </section>
