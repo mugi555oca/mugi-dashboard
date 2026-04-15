@@ -169,6 +169,19 @@ input[type="text"] {
     font-weight: 300;
 }
 
+.page-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-title-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
 .page-subtitle {
     margin-top: 8px;
     color: var(--text-secondary);
