@@ -154,7 +154,7 @@ function switchTab(tab) {
         document.getElementById('page-title').innerText = 'CMET - Critical Material Exposure Token';
         document.getElementById('page-subtitle').innerText = 'Interaktive Soft-Peg-/PAT-Mechanik';
     } else {
-        document.getElementById('page-title').innerText = 'CMET Historical PAT Backtest';
+        document.getElementById('page-title').innerText = 'CMET Historical PAT Backtest Beta';
         document.getElementById('page-subtitle').innerText = 'Historische Performance eines fixen CMR-Mix';
         if (historyState.summary.length) renderHistory();
     }
